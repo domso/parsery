@@ -323,6 +323,8 @@ bool set_hierarchy_for_tokens(std::vector<token>& tokens) {
         {KEY_WORD_LIBRARY, OPERATOR_SEMICOLON},
         {KEY_WORD_USE, OPERATOR_SEMICOLON},
         {OPERATOR_BRACKET_OPEN, OPERATOR_BRACKET_CLOSE},
+        {KEY_WORD_GENERIC, OPERATOR_BRACKET_OPEN, OPERATOR_BRACKET_CLOSE},
+        {KEY_WORD_PORT, OPERATOR_BRACKET_OPEN, OPERATOR_BRACKET_CLOSE},
         {OPERATOR_DOUBLE_QUOTE, OPERATOR_DOUBLE_QUOTE},
         {KEY_WORD_ENTITY, KEY_WORD_IS, KEY_WORD_END, KEY_WORD_ENTITY, OPERATOR_SEMICOLON},
         {KEY_WORD_ENTITY, KEY_WORD_IS, KEY_WORD_END, EXPRESSION, OPERATOR_SEMICOLON},
@@ -358,7 +360,7 @@ bool set_hierarchy_for_tokens(std::vector<token>& tokens) {
         {KEY_WORD_SIGNAL, OPERATOR_DOUBLE_POINT, OPERATOR_DOUBLE_POINT, OPERATOR_EQUALS, OPERATOR_SEMICOLON},
         {KEY_WORD_VARIABLE, OPERATOR_DOUBLE_POINT, OPERATOR_SEMICOLON},
         {KEY_WORD_VARIABLE, OPERATOR_DOUBLE_POINT, OPERATOR_DOUBLE_POINT, OPERATOR_EQUALS, OPERATOR_SEMICOLON},
-        {KEY_WORD_CONSTANT, OPERATOR_DOUBLE_POINT, OPERATOR_DOUBLE_POINT, OPERATOR_EQUALS, OPERATOR_SEMICOLON}
+        {KEY_WORD_CONSTANT, OPERATOR_DOUBLE_POINT, OPERATOR_DOUBLE_POINT, OPERATOR_EQUALS, OPERATOR_SEMICOLON},
     };
     
     std::vector<std::pair<std::vector<size_t>, size_t>> stack;
@@ -526,20 +528,17 @@ void print_hierarchy(const std::vector<token>& tokens, const token_classificator
     }
 }
 
+#include "src/parser/node_generator.h"
+
 int main(int argc, char **argv) {
     if (argc == 2) {
-        auto vec = split_file(argv[1]);
+
+        parser::node_generator ng;
         
-        token_classificator classifier;
+        auto node = ng.generate("[label][test](a-zA-Z)(a-z)*|(0-9)|abc");
         
-        for (auto& t : vec) {
-            t.set_type(classifier.classify(t.text()));
-        }
         
-        set_hierarchy_for_tokens(vec);
-        
-        print_hierarchy(vec, classifier);
-        
+        node.print();
         
     }
 
