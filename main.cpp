@@ -529,18 +529,28 @@ void print_hierarchy(const std::vector<token>& tokens, const token_classificator
 }
 
 #include "src/parser/node_generator.h"
+#include "src/parser/parser.h"
 
 int main(int argc, char **argv) {
-    if (argc == 2) {
+//     if (argc == 2) {
 
-        parser::node_generator ng;
+    parser::parser p;
         
-        auto node = ng.generate("[label][test](a-zA-Z)(a-z)*|(0-9)|abc");
-        
-        
-        node.print();
-        
-    }
+    
+    p.add_rule("label", "(a-z|A-Z)(a-z|A-Z|0-9)*");
+    p.add_rule("number", "(0-9)(0-9)*");
+    p.add_rule("operator", "(+|+)");
+    p.add_top_rule("term", "([number]|[label])[operator]([number]|[label])([operator]([number]|[label]))*;");
+    
+    p.init();
+    
+    auto blub = p.parse_to_sequence("123+321;");
+    std::cout << "" << std::endl;
+    std::cout << "" << std::endl;
+    std::cout << "Solution" << std::endl;
+    p.print(blub);
+    
+//     }
 
     return 0;
 }

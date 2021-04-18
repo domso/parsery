@@ -6,12 +6,12 @@ parser::node::node(const std::string& t) : text(t) {
 
 }
 
-void parser::node::print()
+void parser::node::print() const
 {
     print(0);
 }
 
-void parser::node::print(const int offset)
+void parser::node::print(const int offset) const
 {
     for (int i = 0; i < offset; i++) {
         std::cout << "    ";

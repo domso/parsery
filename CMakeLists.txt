@@ -7,6 +7,7 @@ add_executable(
     main.cpp
     src/parser/node.cpp
     src/parser/node_generator.cpp
+    src/parser/parser.cpp
 )
 
 install(TARGETS vhdl_parser RUNTIME DESTINATION bin)

@@ -7,10 +7,10 @@ namespace parser {
 struct node {
 public:
     node(const std::string& t);
-    void print();
+    void print() const;
     std::string text;
     std::vector<node> children;
 private:
-    void print(const int offset);
+    void print(const int offset) const;
 };
 }

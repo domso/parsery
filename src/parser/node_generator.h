@@ -8,15 +8,15 @@
 namespace parser {
     class node_generator {
     public:
-        node generate(const std::string& text);
+        node generate(const std::string& text) const;
     private:
-        std::string extend_star(const std::string& text, const int num);
-        std::string extend_or(const std::string& text, const int num);
-        std::string extend_range(const std::string& text, const int num);
-        std::string extend_label(const std::string& text, const int num);
+        std::string extend_star(const std::string& text, const int num) const;
+        std::string extend_or(const std::string& text, const int num) const;
+        std::string extend_range(const std::string& text, const int num) const;
+        std::string extend_label(const std::string& text, const int num) const;
         
-        void reduce_node(node& n);
-        void split_node(node& n);
-        void split_block_node(node& n);
+        void reduce_node(node& n) const;
+        void split_node(node& n) const;
+        void split_block_node(node& n) const;
     };
 }
