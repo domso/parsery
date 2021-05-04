@@ -535,22 +535,21 @@ int main(int argc, char **argv) {
 //     if (argc == 2) {
 
     parser::parser p;
-        
     
     p.add_rule("label", "(a-z|A-Z)(a-z|A-Z|0-9)*");
     p.add_rule("number", "(0-9)(0-9)*");
-    p.add_rule("operator", "(+|+)");
-    p.add_top_rule("term", "([number]|[label])[operator]([number]|[label])([operator]([number]|[label]))*;");
+    p.add_rule("operator", "(+|\\-|\\*|/|=)");
+    p.add_top_rule("term", "([number]|[label]) *[operator] *([number]|[label])( *[operator] *([number]|[label]))*");
+    p.add_top_rule("assignment", "[label] *= *[term]");
+    
+    p.add_top_rule("bracket_term", "(\\([term]\\))|[term]|[number]|[label]");
+    p.add_top_rule("bracket_add_term", "[bracket_term] *[operator] * [bracket_term] *( *[operator] *[bracket_term])*;");
     
     p.init();
-    
-    auto blub = p.parse_to_sequence("123+321;");
-    std::cout << "" << std::endl;
-    std::cout << "" << std::endl;
+                                     
+    auto blub = p.parse_to_sequence("(a");
     std::cout << "Solution" << std::endl;
     p.print(blub);
-    
-//     }
 
     return 0;
 }

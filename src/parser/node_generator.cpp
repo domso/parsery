@@ -8,7 +8,8 @@ parser::node parser::node_generator::generate(const std::string& text) const
 
     split_node(result);
     reduce_node(result);
-
+    clean_node(result);    
+    
     return result;
 }
 
@@ -118,42 +119,45 @@ std::string parser::node_generator::extend_or(const std::string& text, const int
 
                     escaped = false;
                     for (size_t j = i + 1; j <= text.length(); j++) {
-                        if (escaped) {
-                            escaped = false;
-                        } else {
+                        if (!escaped) {
                             if (text.at(j) == '(') {
                                 brackets++;
                             }
                             if (text.at(j) == ')') {
                                 brackets--;
                             }
-                            if (brackets == 0) {
-                                if (j < text.length() - 1) {
-                                    return extend_or(
-                                               text.substr(0, start) +
-                                               "((" +
-                                               text.substr(start, i - start) +
-                                               ")|(" +
-                                               text.substr(i + 1, j - (i + 1) + 1) +
-                                               "))" +
-                                               text.substr(j + 1)
-                                               , num + 1
-                                           );
-                                } else {
-                                    return extend_or(
-                                               text.substr(0, start) +
-                                               "((" +
-                                               text.substr(start, i - start) +
-                                               ")|(" +
-                                               text.substr(i + 1, j - (i + 1) + 1) +
-                                               "))"
-                                               , num + 1
-                                           );
-                                }
-                            }
                         }
-
-                        escaped = (text.at(j) == '\\');
+                        
+                        if (brackets == 0 && (escaped || text.at(j) != '\\')) {
+                            if (j < text.length() - 1) {
+                                return extend_or(
+                                            text.substr(0, start) +
+                                            "((" +
+                                            text.substr(start, i - start) +
+                                            ")|(" +
+                                            text.substr(i + 1, j - (i + 1) + 1) +
+                                            "))" +
+                                            text.substr(j + 1)
+                                            , num + 1
+                                        );
+                            } else {
+                                return extend_or(
+                                            text.substr(0, start) +
+                                            "((" +
+                                            text.substr(start, i - start) +
+                                            ")|(" +
+                                            text.substr(i + 1, j - (i + 1) + 1) +
+                                            "))"
+                                            , num + 1
+                                        );
+                            }
+                        }                        
+                
+                        if (escaped) {
+                            escaped = (text.at(j) == '\\');
+                        } else {
+                            escaped = false;
+                        }                        
                     }
                 } else {
                     found++;
@@ -216,42 +220,44 @@ std::string parser::node_generator::extend_range(const std::string& text, const 
 
                     escaped = false;
                     for (size_t j = i + 1; j <= text.length(); j++) {
-                        if (escaped) {
-                            escaped = false;
-                        } else {
+                        if (!escaped) {
                             if (text.at(j) == '(') {
                                 brackets++;
                             }
                             if (text.at(j) == ')') {
                                 brackets--;
                             }
-                            if (brackets == 0) {
-                                if (j < text.length() - 1) {
-                                    return extend_range(
-                                               text.substr(0, start) +
-                                               "((" +
-                                               text.substr(start, i - start) +
-                                               ")-(" +
-                                               text.substr(i + 1, j - (i + 1) + 1) +
-                                               "))" +
-                                               text.substr(j + 1)
-                                               , num + 1
-                                           );
-                                } else {
-                                    return extend_range(
-                                               text.substr(0, start) +
-                                               "((" +
-                                               text.substr(start, i - start) +
-                                               ")-(" +
-                                               text.substr(i + 1, j - (i + 1) + 1) +
-                                               "))"
-                                               , num + 1
-                                           );
-                                }
-                            }
                         }
-
-                        escaped = (text.at(j) == '\\');
+                        if (brackets == 0 && (escaped || text.at(j) != '\\')) {
+                            if (j < text.length() - 1) {
+                                return extend_range(
+                                            text.substr(0, start) +
+                                            "((" +
+                                            text.substr(start, i - start) +
+                                            ")-(" +
+                                            text.substr(i + 1, j - (i + 1) + 1) +
+                                            "))" +
+                                            text.substr(j + 1)
+                                            , num + 1
+                                        );
+                            } else {
+                                return extend_range(
+                                            text.substr(0, start) +
+                                            "((" +
+                                            text.substr(start, i - start) +
+                                            ")-(" +
+                                            text.substr(i + 1, j - (i + 1) + 1) +
+                                            "))"
+                                            , num + 1
+                                        );
+                            }
+                        }                                              
+                
+                        if (escaped) {
+                            escaped = (text.at(j) == '\\');
+                        } else {
+                            escaped = false;
+                        }   
                     }
                 } else {
                     found++;
@@ -372,6 +378,30 @@ void parser::node_generator::split_block_node(parser::node& n) const
         n.text = "";
     }
 }
+
+void parser::node_generator::clean_node(parser::node& n) const {
+    std::string result;
+    
+    bool escaped = false;
+    for (auto c : n.text) {
+        if (escaped) {
+            result += c;
+        } else {
+            if (c == '\\') {
+                escaped = true;
+            } else {
+                result += c;
+            }
+        }
+    }    
+    
+    n.text = result;    
+    
+    for (auto& c : n.children) {
+        clean_node(c);
+    }
+}
+
 
 
 

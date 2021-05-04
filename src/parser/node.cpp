@@ -17,7 +17,7 @@ void parser::node::print(const int offset) const
         std::cout << "    ";
     }
     if (children.empty()) {
-        std::cout << text << std::endl;
+        std::cout << "'" << text << "'" << std::endl;
     } else {
         std::cout << text << "(" << std::endl;
         for (auto& c : children) {

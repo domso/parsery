@@ -6,7 +6,6 @@ void parser::parser::add_rule(const std::string& name, const std::string& rule) 
     m_nodes.push_back(m_generator.generate(rule));
     m_rule_map[name] = m_nodes.size() - 1;
     m_name_map[m_nodes.size() - 1] = name;
-    m_nodes.rbegin()->print();
 }
 
 void parser::parser::add_top_rule (const std::string& name, const std::string& rule) {
@@ -19,8 +18,7 @@ void parser::parser::init() {
     
     for (auto& s : m_top_rules) {
         auto id = m_rule_map.at(s);
-        auto tmp = node_initial_expansion(m_nodes[id]);
-        
+        auto tmp = node_initial_expansion(m_nodes[id]);        
         
         for (auto& r : tmp) {
             r.path.insert(r.path.begin(), id);
@@ -28,12 +26,18 @@ void parser::parser::init() {
             
             m_initial_sequence.push_back(r);
         }        
-    }       
-    
-//     print(m_initial_sequence);
-//     std::cout << "" << std::endl;
-//     auto b = sequence_increment(m_initial_sequence[0]);
-//     print(b);
+    }           
+}
+
+bool parser::parser::history_element::operator==(const parser::parser::history_element& other) const {
+    return 
+        rule == other.rule &&
+        open == other.open &&
+        section == other.section;
+}
+
+bool parser::parser::parse_sequence::operator==(const parser::parser::parse_sequence& other) const {
+    return path == other.path && history == other.history;
 }
 
 std::vector<parser::parser::parse_sequence> parser::parser::parse_to_sequence(const std::string& input) const
@@ -41,15 +45,13 @@ std::vector<parser::parser::parse_sequence> parser::parser::parse_to_sequence(co
     std::vector<parser::parser::parse_sequence> result = m_initial_sequence;
 
     for (size_t i = 0; i < input.length(); i++) {
-        std::cout << "## Step: " << i << std::endl;
-        print(result);
-        
-        
         std::vector<parser::parser::parse_sequence> active;
-        std::vector<parser::parser::parse_sequence> final;
+        std::vector<parser::parser::parse_sequence> final_seq;
         
         for (auto& current : result) {
-            if (sequence_accepts(current, input.at(i))) {
+            if (sequence_accepts(current, input.at(i))) {                
+                current.history[current.history.size() - 1].section += std::string(1, input.at(i));
+                
                 auto next = sequence_increment(current);
                 for (auto& s : next) {
                     active.push_back(s);                    
@@ -58,22 +60,25 @@ std::vector<parser::parser::parse_sequence> parser::parser::parse_to_sequence(co
         }
         
         for (auto& current : active) {
-            if (current.path.empty() && i != input.length() - 1) {
+            if (current.path.empty() && i != input.length() - 1) {                
                 auto s0 = add_sequences(current, m_initial_sequence);
                 for (auto& s : s0) {
-                    final.push_back(s);
+                    if (!contains<parser::parser::parse_sequence>(final_seq, s)) {
+                        final_seq.push_back(s);
+                    }                    
                 }                
             } else {
-                final.push_back(current);
+                if (!contains<parser::parser::parse_sequence>(final_seq, current)) {
+                    final_seq.push_back(current);
+                }
             }
-        }
+        }    
         
-        result = final;
+        result = final_seq;
     }    
     
     return result;
 }
-
 
 bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& current, const char c) const {
     assert(!current.path.empty());
@@ -96,11 +101,10 @@ bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& curr
         n->children[1].text.length() == 1 &&
         n->children[2].children.empty() &&
         n->children[2].text.length() == 1 &&
-        n->children[0].text[0] != '\\' &&
         n->children[1].text[0] == '-' &&
         current.path[current.path.size() - 1] == 1
     ) {        
-        return n->children[0].text[0] <= c && c <= n->children[2].text[0];
+        return n->children[0].text[0] <= c && c <= n->children[2].text[0];    
     } else {        
         assert(n->children.empty());        
         
@@ -109,7 +113,6 @@ bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& curr
             n->text.at(current.path[current.path.size() - 1]) == c;        
     }
 }
-
 
 std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(const parser::parser::parse_sequence& current) const {
     assert(!current.path.empty());
@@ -134,7 +137,7 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
         n = &(n->children[current.path[i]]);
     }
     
-    if (
+    if (!(
         n->children.size() == 3 &&
         n->children[0].children.empty() &&
         n->children[0].text.length() == 1 &&
@@ -142,65 +145,55 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
         n->children[1].text.length() == 1 &&
         n->children[2].children.empty() &&
         n->children[2].text.length() == 1 &&
-        n->children[0].text[0] != '\\' &&
         n->children[1].text[0] == '-' &&
         current.path[current.path.size() - 1] == 1
-    ) {        
-//         return n->children[0].text[0] <= c && c <= n->children[2].text[0];
-//         node_stack.pop_back();
-//         index_stack.pop_back();
-//         name_stack.pop_back();
-    } else {        
+    )) {        
         if (current.path[current.path.size() - 1] + 1 < n->text.length()) {
             auto result = current;
             result.path[result.path.size() - 1]++;
             return {result};
         }      
     }
+    
     parser::parser::parse_sequence next = current;
-    next.path.pop_back();
-    
-    
-//     next.history.push_back(m_name_map.at())
-    
+    next.path.pop_back();   
+
     std::vector<parser::parser::parse_sequence> saved_sequences;
     
     for (int i = node_stack.size() - 1; i >= 0; i--) {
-        if (index_stack[i] + 1 < node_stack[i]->children.size()) {            
+        int offset = 1;
+        while (index_stack[i] + offset < node_stack[i]->children.size()) {            
             if (
-                node_stack[i]->children[index_stack[i] + 1].children.empty() &&
-                node_stack[i]->children[index_stack[i] + 1].text.length() == 1 &&
-                node_stack[i]->children[index_stack[i] + 1].text[0] == '|'
+                node_stack[i]->children[index_stack[i] + offset].children.empty() &&
+                node_stack[i]->children[index_stack[i] + offset].text.length() == 1 &&
+                node_stack[i]->children[index_stack[i] + offset].text[0] == '|'
             ) {
-                // do nothing here
+                break;
             } else if (
-                node_stack[i]->children[index_stack[i] + 1].children.empty() &&
-                node_stack[i]->children[index_stack[i] + 1].text.length() == 1 &&
-                node_stack[i]->children[index_stack[i] + 1].text[0] == '*'
+                node_stack[i]->children[index_stack[i] + offset].children.empty() &&
+                node_stack[i]->children[index_stack[i] + offset].text.length() == 1 &&
+                node_stack[i]->children[index_stack[i] + offset].text[0] == '*'
             ) { 
                 auto s0 = node_initial_expansion(node_stack[i]->children[index_stack[i]]);
                 auto seq = add_sequences(next, s0);    
                 for (auto& s : seq) {
                     saved_sequences.push_back(s);
                 }
+                break;
             } else {                
                 next.path[next.path.size() - 1]++;
-                auto s0 = node_initial_expansion(node_stack[i]->children[index_stack[i] + 1]);
+                auto s0 = node_initial_expansion(node_stack[i]->children[index_stack[i] + offset]);
                 auto seq = add_sequences(next, s0);    
                 for (auto& s : seq) {
                     saved_sequences.push_back(s);
                 }    
-                
-//                 print(s0);
-                
-//                 std::cout << "asd " << i << std::endl;
 
                 if (
-                    node_stack[i]->children[index_stack[i] + 1].children.size() == 2 &&
-                    node_stack[i]->children[index_stack[i] + 1].children[1].text.length() > 0 &&
-                    node_stack[i]->children[index_stack[i] + 1].children[1].text[0] == '*'
+                    node_stack[i]->children[index_stack[i] + offset].children.size() == 2 &&
+                    node_stack[i]->children[index_stack[i] + offset].children[1].text.length() > 0 &&
+                    node_stack[i]->children[index_stack[i] + offset].children[1].text[0] == '*'
                 ) {
-                    
+                    offset++;
                 } else {
                     return saved_sequences;
                 }                
@@ -215,11 +208,11 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
     }
     
     next.path.clear();
+    next.history.push_back({current.path[0], false});
     saved_sequences.push_back(next);
     
     return saved_sequences;
 }
-
 
 std::vector<parser::parser::parse_sequence> parser::parser::node_initial_expansion(const node& n) const {       
     if (n.children.empty()) {
@@ -248,14 +241,12 @@ std::vector<parser::parser::parse_sequence> parser::parser::node_initial_expansi
                 n.children[1].text.length() == 1 &&
                 n.children[2].children.empty() &&
                 n.children[2].text.length() == 1 &&
-                n.children[0].text[0] != '\\' &&
                 n.children[1].text[0] == '-'
             ) {
                 return {{{1}, {}}};
             }
             
             if (
-                n.children[0].text[0] != '\\' &&
                 n.children[1].children.empty() &&
                 n.children[1].text.length() == 1 &&
                 n.children[1].text[0] == '|'
@@ -264,22 +255,40 @@ std::vector<parser::parser::parse_sequence> parser::parser::node_initial_expansi
                 auto s0 = node_initial_expansion(n.children[0]);
                 auto s1 = node_initial_expansion(n.children[2]);
                                 
-                return merge_sequences(s0, s1);
+                return merge_sequences(s0, s1, 0, 2);
             }
         }  
         
-        auto s0 = node_initial_expansion(n.children[0]);         
+        std::vector<parser::parser::parse_sequence> result;    
     
-        return merge_sequences(s0, {});        
+        for (size_t i = 0; n.children.size() - 1; i++) {
+            auto s0 = node_initial_expansion(n.children[i]);                     
+            auto m0 = merge_sequences(s0, {}, i, 0);   
+
+            for (auto& m : m0) {
+                result.push_back(m);
+            }
+                
+            if (!(
+                n.children[i].children.size() == 2 &&
+                n.children[i].children[1].children.empty() &&
+                n.children[i].children[1].text.length() == 1 &&
+                n.children[i].children[1].text[0] == '*'            
+            )) {
+                break;
+            }            
+        }   
+        
+        return result;
     }
 }
 
-std::vector<parser::parser::parse_sequence> parser::parser::merge_sequences(const std::vector<parse_sequence>& s0, const std::vector<parse_sequence>& s1) const {
+std::vector<parser::parser::parse_sequence> parser::parser::merge_sequences(const std::vector<parse_sequence>& s0, const std::vector<parse_sequence>& s1, const size_t n0, const size_t n1) const {
     std::vector<parser::parser::parse_sequence> result;                
     
     for (auto& s : s0) {
         parser::parser::parse_sequence seq;
-        seq.path.push_back(0);
+        seq.path.push_back(n0);
         for (auto& p : s.path) {
             seq.path.push_back(p);
         }
@@ -290,7 +299,7 @@ std::vector<parser::parser::parse_sequence> parser::parser::merge_sequences(cons
     
     for (auto& s : s1) {
         parser::parser::parse_sequence seq;
-        seq.path.push_back(2);
+        seq.path.push_back(n1);
         for (auto& p : s.path) {
             seq.path.push_back(p);
         }
@@ -323,19 +332,36 @@ std::vector<parser::parser::parse_sequence> parser::parser::add_sequences(const 
     return result;
 }
 
-
 void parser::parser::print(const std::vector<parse_sequence>& seqvec) const {
+    int level = 0;
     for (auto& seq : seqvec) {
+        level = 0;
         std::cout << "### Sequence ###" << std::endl;
-        std::cout << "# History := ";
-        for (auto& h : seq.history) {
-            if (h.second) {
-                std::cout << "<" << m_name_map.at(h.first) << ">";
+        std::cout << "# History := " << std::endl;
+
+        for (auto& h : seq.history) {            
+            if (h.open) {
+                for (int i = 0; i < level; i++) {
+                    std::cout << "    ";
+                }
+                std::cout << "<" << m_name_map.at(h.rule) << ">" << std::endl;
+                level++;
             } else {
-                std::cout << "</" << m_name_map.at(h.first) << ">";                
+                for (int i = 0; i < level - 1; i++) {
+                    std::cout << "    ";
+                }
+                std::cout << "</" << m_name_map.at(h.rule) << ">" << std::endl;                
+                level--;
+            }
+            if (h.section.length() > 0) {            
+                for (int i = 0; i < level; i++) {
+                    std::cout << "    ";
+                }
+                std::cout << "'" << h.section << "'" << std::endl;
             }
         }
-        std::cout << std::endl;
+        
+//         std::cout << std::endl;
         std::cout << "# Path := ";
         for (auto& p : seq.path) {
             std::cout << p << " ";
