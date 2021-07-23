@@ -40,15 +40,16 @@ bool parser::parser::parse_sequence::operator==(const parser::parser::parse_sequ
     return path == other.path && history == other.history;
 }
 
-std::vector<parser::parser::parse_sequence> parser::parser::parse_to_sequence(const std::string& input) const
+parser::parser::solution parser::parser::parse_to_sequence(const std::string& input) const
 {
-    std::vector<parser::parser::parse_sequence> result = m_initial_sequence;
+    parser::parser::solution result;
+    std::vector<parser::parser::parse_sequence> sequence = m_initial_sequence;
 
     for (size_t i = 0; i < input.length(); i++) {
         std::vector<parser::parser::parse_sequence> active;
         std::vector<parser::parser::parse_sequence> final_seq;
         
-        for (auto& current : result) {
+        for (auto& current : sequence) {
             if (sequence_accepts(current, input.at(i))) {                
                 current.history[current.history.size() - 1].section += std::string(1, input.at(i));
                 
@@ -57,6 +58,13 @@ std::vector<parser::parser::parse_sequence> parser::parser::parse_to_sequence(co
                     active.push_back(s);                    
                 }
             }
+        }
+        
+        if (active.empty()) {
+            result.rejected = sequence;
+            result.rejected_index = i;
+            
+            return result;
         }
         
         for (auto& current : active) {
@@ -74,8 +82,16 @@ std::vector<parser::parser::parse_sequence> parser::parser::parse_to_sequence(co
             }
         }    
         
-        result = final_seq;
+        sequence = final_seq;
     }    
+    
+    for (auto& current : sequence) {
+        if (current.path.empty()) {
+            result.fully_accepted.push_back(current);
+        } else {
+            result.partial_accepted.push_back(current);
+        }
+    }
     
     return result;
 }

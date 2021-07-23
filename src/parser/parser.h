@@ -13,7 +13,6 @@ namespace parser {
         void add_top_rule(const std::string& name, const std::string& rule);
         
         void init();
-//     private:
         
         struct history_element {
             size_t rule;
@@ -28,20 +27,23 @@ namespace parser {
             bool operator==(const parse_sequence& other) const;
         };
         
-        std::vector<parse_sequence> parse_to_sequence(const std::string& input) const;
+        struct solution {
+            std::vector<parse_sequence> fully_accepted;
+            std::vector<parse_sequence> partial_accepted;
+            std::vector<parse_sequence> rejected;
+            size_t rejected_index;
+        };
         
-        bool sequence_accepts(const parse_sequence& current, const char c) const;
-                
-        
-        
-        std::vector<parse_sequence> sequence_increment(const parse_sequence& current) const;
-        
-        std::vector<parse_sequence> node_initial_expansion(const node& n) const;
-        
-        std::vector<parse_sequence> merge_sequences(const std::vector<parse_sequence>& s0, const std::vector<parse_sequence>& s1, const size_t n0, const size_t n1) const;
-        std::vector<parse_sequence> add_sequences(const parse_sequence& current, const std::vector<parse_sequence>& s0) const;
+        solution parse_to_sequence(const std::string& input) const;
         
         void print(const std::vector<parse_sequence>& seqvec) const;
+    private:
+        bool sequence_accepts(const parse_sequence& current, const char c) const;
+        
+        std::vector<parse_sequence> sequence_increment(const parse_sequence& current) const;        
+        std::vector<parse_sequence> node_initial_expansion(const node& n) const;        
+        std::vector<parse_sequence> merge_sequences(const std::vector<parse_sequence>& s0, const std::vector<parse_sequence>& s1, const size_t n0, const size_t n1) const;
+        std::vector<parse_sequence> add_sequences(const parse_sequence& current, const std::vector<parse_sequence>& s0) const;        
         
         template<typename T>
         bool contains(const std::vector<T>& vec, const T& o) const {
