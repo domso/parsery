@@ -1,9 +1,18 @@
 #include "node_generator.h"
+#include <iostream>
 
 parser::node parser::node_generator::generate(const std::string& text) const
 {
+    std::cout << text << std::endl;
+    std::cout << extend_label(text, 0) << std::endl;
+    std::cout << extend_range(extend_label(text, 0), 0) << std::endl;
+    std::cout << extend_star(extend_range(extend_label(text, 0), 0), 0) << std::endl;
+    
+    
     auto extended_text = extend_or(extend_star(extend_range(extend_label(text, 0), 0), 0), 0);
 
+    std::cout << extended_text << std::endl;
+    
     node result(extended_text);
 
     split_node(result);
@@ -77,6 +86,7 @@ std::string parser::node_generator::extend_or(const std::string& text, const int
     int brackets = 0;
     int src_brackets = 0;
     size_t start;
+    size_t end;
 
     for (size_t i = 0; i < text.length(); i++) {
         if (escaped) {
@@ -96,6 +106,7 @@ std::string parser::node_generator::extend_or(const std::string& text, const int
 
                     escaped = false;
                     start = 0;
+                    brackets = 0;
 
                     for (size_t j = 0; j < i; j++) {
                         if (escaped) {
@@ -118,46 +129,49 @@ std::string parser::node_generator::extend_or(const std::string& text, const int
                     brackets = 0;
 
                     escaped = false;
-                    for (size_t j = i + 1; j <= text.length(); j++) {
+                    end = text.length() - 1;
+                    
+                    for (size_t j = i + 1; j < text.length(); j++) {
                         if (!escaped) {
                             if (text.at(j) == '(') {
                                 brackets++;
                             }
+                            
                             if (text.at(j) == ')') {
                                 brackets--;
                             }
-                        }
-                        
-                        if (brackets == 0 && (escaped || text.at(j) != '\\')) {
-                            if (j < text.length() - 1) {
-                                return extend_or(
-                                            text.substr(0, start) +
-                                            "((" +
-                                            text.substr(start, i - start) +
-                                            ")|(" +
-                                            text.substr(i + 1, j - (i + 1) + 1) +
-                                            "))" +
-                                            text.substr(j + 1)
-                                            , num + 1
-                                        );
-                            } else {
-                                return extend_or(
-                                            text.substr(0, start) +
-                                            "((" +
-                                            text.substr(start, i - start) +
-                                            ")|(" +
-                                            text.substr(i + 1, j - (i + 1) + 1) +
-                                            "))"
-                                            , num + 1
-                                        );
+                            
+                            if (brackets == -1 || text.at(j) == '|') {
+                                end = j - 1;
+                                break;
                             }
-                        }                        
-                
-                        if (escaped) {
+                            
                             escaped = (text.at(j) == '\\');
                         } else {
                             escaped = false;
-                        }                        
+                        }
+                    }
+                    if (end < text.length() - 1) {
+                        return extend_or(
+                                    text.substr(0, start) +
+                                    "((" +
+                                    text.substr(start, i - start) +
+                                    ")|(" +
+                                    text.substr(i + 1, end - (i + 1) + 1) +
+                                    "))" +
+                                    text.substr(end + 1)
+                                    , num + 1
+                                );
+                    } else {                        
+                        return extend_or(
+                                    text.substr(0, start) +
+                                    "((" +
+                                    text.substr(start, i - start) +
+                                    ")|(" +
+                                    text.substr(i + 1, end - (i + 1) + 1) +
+                                    "))"
+                                    , num + 1
+                                );
                     }
                 } else {
                     found++;

@@ -6,6 +6,7 @@ void parser::parser::add_rule(const std::string& name, const std::string& rule) 
     m_nodes.push_back(m_generator.generate(rule));
     m_rule_map[name] = m_nodes.size() - 1;
     m_name_map[m_nodes.size() - 1] = name;
+    m_nodes.rbegin()->print();
 }
 
 void parser::parser::add_top_rule (const std::string& name, const std::string& rule) {
