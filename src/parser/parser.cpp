@@ -1,7 +1,9 @@
 #include "parser.h"
 #include <assert.h>
+#include <chrono>
 #include <iostream>
 
+    int measured_times[4] = {0, 0, 0, 0};
 void parser::parser::add_rule(const std::string& name, const std::string& rule) {    
     m_nodes.push_back(m_generator.generate(rule));
     m_rule_map[name] = m_nodes.size() - 1;
@@ -38,29 +40,57 @@ bool parser::parser::history_element::operator==(const parser::parser::history_e
 }
 
 bool parser::parser::parse_sequence::operator==(const parser::parser::parse_sequence& other) const {
-    return path == other.path && history == other.history;
+    return path == other.path && history == other.history && parent == other.parent;
 }
 
-parser::parser::solution parser::parser::parse_to_sequence(const std::string& input) const
+parser::parser::solution parser::parser::parse_to_sequence(const std::string& input) 
 {
     parser::parser::solution result;
     std::vector<parser::parser::parse_sequence> sequence = m_initial_sequence;
-
+    
+            auto t0 = std::chrono::steady_clock::now();
     for (size_t i = 0; i < input.length(); i++) {
+        std::vector<parser::parser::parse_sequence> cleared;
         std::vector<parser::parser::parse_sequence> active;
         std::vector<parser::parser::parse_sequence> final_seq;
         
+            auto t1 = std::chrono::steady_clock::now();
         for (auto& current : sequence) {
             if (sequence_accepts(current, input.at(i))) {                
-                current.history[current.history.size() - 1].section += std::string(1, input.at(i));
-                
-                auto next = sequence_increment(current);
-                for (auto& s : next) {
-                    active.push_back(s);                    
+                //current.history[current.history.size() - 1].section += std::string(1, input.at(i));
+
+                if (current.parent) {
+                    std::vector<size_t> tmp(current.path.size() + m_parents.at(*current.parent).size());
+                    auto p = *current.parent;
+                    for (size_t i = 0; i < m_parents.at(p).size(); i++) {
+                        tmp[i] = m_parents.at(p)[i];
+                    }
+                    for (size_t i = 0; i < current.path.size(); i++) {
+                        tmp[m_parents.at(p).size() + i] = current.path[i];
+                    }
+
+                    current.parent = std::nullopt;
+                    current.path = std::move(tmp);
                 }
+            
+                cleared.push_back(std::move(current));
+            }
+        }
+        m_parent_id = 0;
+        m_parents.clear();
+
+        for (auto& current : cleared) {
+            auto next = sequence_increment(current);
+            size_t j = active.size();
+            active.resize(active.size() + next.size());
+
+            for (auto& s : next) {
+                active[j] = std::move(s);                    
+                j++;
             }
         }
         
+                auto t2 = std::chrono::steady_clock::now();
         if (active.empty()) {
             result.rejected = sequence;
             result.rejected_index = i;
@@ -68,26 +98,45 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
             return result;
         }
         
+        auto t3 = std::chrono::steady_clock::now();
+        final_seq.reserve(final_seq.size() + active.size());
+
         for (auto& current : active) {
-            if (current.path.empty() && i != input.length() - 1) {                
+            if (current.path.empty() && (!current.parent) && i != input.length() - 1) {                
                 auto s0 = add_sequences(current, m_initial_sequence);
+                final_seq.reserve(final_seq.capacity() + s0.size());
+
                 for (auto& s : s0) {
                     if (!contains<parser::parser::parse_sequence>(final_seq, s)) {
-                        final_seq.push_back(s);
+                        final_seq.push_back(std::move(s));
                     }                    
                 }                
             } else {
                 if (!contains<parser::parser::parse_sequence>(final_seq, current)) {
-                    final_seq.push_back(current);
+                    final_seq.push_back(std::move(current));
                 }
             }
         }    
         
-        sequence = final_seq;
+        auto t4 = std::chrono::steady_clock::now();
+        sequence = std::move(final_seq);
+        
+                measured_times[0] += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+                measured_times[1] += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+                measured_times[2] += std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
     }    
+            auto t6 = std::chrono::steady_clock::now();
+
+                measured_times[3] += std::chrono::duration_cast<std::chrono::microseconds>(t6 - t0).count();
+    
+
+    std::cout << measured_times[0] << std::endl;
+    std::cout << measured_times[1] << std::endl;
+    std::cout << measured_times[2] << std::endl;
+    std::cout << measured_times[3] << std::endl;
     
     for (auto& current : sequence) {
-        if (current.path.empty()) {
+        if (current.path.empty() && (!current.parent)) {
             result.fully_accepted.push_back(current);
         } else {
             result.partial_accepted.push_back(current);
@@ -99,9 +148,28 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
 
 bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& current, const char c) const {
     assert(!current.path.empty());
-    const node* n = &m_nodes[current.path[0]];
+    const node* n;
+
+    int normal_path_start = 1;
+    if (current.parent) {
+        auto& p = *current.parent;
+        assert(m_parents.at(p).size() > 0);
+        n = &m_nodes[m_parents.at(p)[0]];
+        
+        for (size_t i = 1; i < m_parents.at(p).size() - 1; i++) {        
+            if (n->children.empty()) {
+                auto name = n->text.substr(1, n->text.length() - 2);
+                n = &m_nodes[m_rule_map.at(name)];
+            }
+                    
+            n = &(n->children[m_parents.at(p)[i]]);
+        }
+        normal_path_start = 0;
+    } else {
+        n = &m_nodes[current.path[0]];
+    }
     
-    for (size_t i = 1; i < current.path.size() - 1; i++) {        
+    for (size_t i = normal_path_start; i < current.path.size() - 1; i++) {        
         if (n->children.empty()) {
             auto name = n->text.substr(1, n->text.length() - 2);
             n = &m_nodes[m_rule_map.at(name)];
@@ -109,7 +177,8 @@ bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& curr
                 
         n = &(n->children[current.path[i]]);
     }
-    
+   
+   assert(!current.path.empty()) ;
     if (
         n->children.size() == 3 &&
         n->children[0].children.empty() &&
@@ -131,25 +200,26 @@ bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& curr
     }
 }
 
-std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(const parser::parser::parse_sequence& current) const {
+std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(const parser::parser::parse_sequence& current) {
     assert(!current.path.empty());
     const node* n = &m_nodes[current.path[0]];
     
-    std::vector<const node*> node_stack;
-    std::vector<size_t> index_stack;
-    std::vector<std::pair<size_t, bool>> name_stack;
+    std::vector<const node*> node_stack(current.path.size() - 2);
+    std::vector<size_t> index_stack(current.path.size() - 2);
+    std::vector<std::pair<size_t, bool>> name_stack(current.path.size() - 2);
+
     
     for (size_t i = 1; i < current.path.size() - 1; i++) {        
         if (n->children.empty()) {
             auto name = n->text.substr(1, n->text.length() - 2);
             n = &m_nodes[m_rule_map.at(name)];
-            name_stack.push_back({m_rule_map.at(name), true});
+            name_stack[i - 1] = {m_rule_map.at(name), true};
         } else {
-            name_stack.push_back({0, false});
+            name_stack[i - 1] = {0, false};
         }
         
-        node_stack.push_back(n); 
-        index_stack.push_back(current.path[i]);
+        node_stack[i - 1] = n; 
+        index_stack[i - 1] = current.path[i];
         
         n = &(n->children[current.path[i]]);
     }
@@ -177,6 +247,8 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
 
     std::vector<parser::parser::parse_sequence> saved_sequences;
     
+    saved_sequences.reserve(128);
+
     for (int i = node_stack.size() - 1; i >= 0; i--) {
         int offset = 1;
         while (index_stack[i] + offset < node_stack[i]->children.size()) {            
@@ -191,19 +263,30 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
                 node_stack[i]->children[index_stack[i] + offset].text.length() == 1 &&
                 node_stack[i]->children[index_stack[i] + offset].text[0] == '*'
             ) { 
+            auto t1 = std::chrono::steady_clock::now();
                 auto s0 = node_initial_expansion(node_stack[i]->children[index_stack[i]]);
+            auto t2 = std::chrono::steady_clock::now();
                 auto seq = add_sequences(next, s0);    
+            auto t3 = std::chrono::steady_clock::now();
+                size_t j = saved_sequences.size();
+                saved_sequences.resize(saved_sequences.size() + seq.size());
                 for (auto& s : seq) {
-                    saved_sequences.push_back(s);
+                    saved_sequences[j++] = std::move(s);
                 }
                 break;
             } else {                
+            auto t1 = std::chrono::steady_clock::now();
                 next.path[next.path.size() - 1]++;
                 auto s0 = node_initial_expansion(node_stack[i]->children[index_stack[i] + offset]);
+            auto t2 = std::chrono::steady_clock::now();
                 auto seq = add_sequences(next, s0);    
+            auto t3 = std::chrono::steady_clock::now();
+                size_t j = saved_sequences.size();
+                saved_sequences.resize(saved_sequences.size() + seq.size());
                 for (auto& s : seq) {
-                    saved_sequences.push_back(s);
-                }    
+                    saved_sequences[j++] = std::move(s);
+                }
+            auto t4 = std::chrono::steady_clock::now();
 
                 if (
                     node_stack[i]->children[index_stack[i] + offset].children.size() == 2 &&
@@ -328,24 +411,55 @@ std::vector<parser::parser::parse_sequence> parser::parser::merge_sequences(cons
     return result;
 }
 
-std::vector<parser::parser::parse_sequence> parser::parser::add_sequences(const parser::parser::parse_sequence& current, const std::vector<parse_sequence>& s0) const
+std::vector<parser::parser::parse_sequence> parser::parser::add_sequences(parser::parser::parse_sequence& current, const std::vector<parse_sequence>& s0)
 {
-    std::vector<parser::parser::parse_sequence> result;
-    
-    for (auto& s : s0) {
-        parse_sequence seq = current;
-        
-        for (auto& h : s.history) {
-            seq.history.push_back(h);
+            auto t1 = std::chrono::steady_clock::now();
+    std::vector<parser::parser::parse_sequence> result(s0.size());
+    size_t i = 0;
+
+    if (current.parent ) {
+        assert(false);
+        std::vector<size_t> tmp(current.path.size() + m_parents.at(*current.parent).size());
+        auto p = *current.parent;
+        for (size_t i = 0; i < m_parents.at(p).size(); i++) {
+            tmp[i] = m_parents.at(p)[i];
         }
-                
-        for (auto& p : s.path) {
-            seq.path.push_back(p);
-        }        
+        for (size_t i = 0; i < current.path.size(); i++) {
+            tmp[m_parents.at(p).size() + i] = current.path[i];
+        }
+
+        current.parent = std::nullopt;
+        current.path = std::move(tmp);
+    }
+
+    if (!current.path.empty()) {
+        m_parents[m_parent_id] = current.path;
+    }
+
+    for (auto& s : s0) {
+
+/*
+        auto j = result[i].history.size();
+        result[i].history.resize(j + s.history.size());
+
+        for (auto& h : s.history) {
+            result[i].history[j] = h;
+            j++;
+        }
+  */    
+
+            result[i] = s;
+        if (current.path.empty()) {
+        } else {
+            result[i].parent = m_parent_id;
+        }
         
-        result.push_back(seq);
+        i++;
     }    
-    
+    if (!current.path.empty()) {
+        m_parent_id++;
+    }
+
     return result;
 }
 

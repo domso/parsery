@@ -25,7 +25,11 @@ namespace parser {
             std::vector<size_t> path;
             std::vector<history_element> history;
             bool operator==(const parse_sequence& other) const;
+
+            std::optional<size_t> parent = std::nullopt;
         };
+        size_t m_parent_id = 0;
+        std::unordered_map<size_t, std::vector<size_t>> m_parents;
         
         struct solution {
             std::vector<parse_sequence> fully_accepted;
@@ -34,16 +38,16 @@ namespace parser {
             size_t rejected_index;
         };
         
-        solution parse_to_sequence(const std::string& input) const;
+        solution parse_to_sequence(const std::string& input) ;
         
         void print(const std::vector<parse_sequence>& seqvec) const;
     private:
         bool sequence_accepts(const parse_sequence& current, const char c) const;
         
-        std::vector<parse_sequence> sequence_increment(const parse_sequence& current) const;        
+        std::vector<parse_sequence> sequence_increment(const parse_sequence& current) ;        
         std::vector<parse_sequence> node_initial_expansion(const node& n) const;        
         std::vector<parse_sequence> merge_sequences(const std::vector<parse_sequence>& s0, const std::vector<parse_sequence>& s1, const size_t n0, const size_t n1) const;
-        std::vector<parse_sequence> add_sequences(const parse_sequence& current, const std::vector<parse_sequence>& s0) const;        
+        std::vector<parse_sequence> add_sequences(parse_sequence& current, const std::vector<parse_sequence>& s0);        
         
         template<typename T>
         bool contains(const std::vector<T>& vec, const T& o) const {

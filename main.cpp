@@ -70,9 +70,9 @@ public:
         
         auto blub = p.parse_to_sequence(text);
         std::cout << "Part" << std::endl;
-        p.print(blub.partial_accepted);
+        //p.print(blub.partial_accepted);
         std::cout << "Solution" << std::endl;
-        p.print(blub.fully_accepted);
+        //p.print(blub.fully_accepted);
     }
     
 private:
