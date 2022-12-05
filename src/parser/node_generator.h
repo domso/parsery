@@ -18,6 +18,7 @@ namespace parser {
         void reduce_node(node& n) const;
         void split_node(node& n) const;
         void split_block_node(node& n) const;
+        void link_node(node& n) const;
         void clean_node(node& n) const;
     };
 }

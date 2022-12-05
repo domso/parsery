@@ -30,3 +30,37 @@ void parser::node::print(const int offset) const
     }
 }
 
+bool parser::node::is_range() const {
+    return children.size() == 3 &&
+           children[0].children.empty() &&
+           children[0].text.length() == 1 &&
+           children[1].children.empty() &&
+           children[1].text.length() == 1 &&
+           children[2].children.empty() &&
+           children[2].text.length() == 1 &&
+           children[1].text[0] == '-';
+}
+
+bool parser::node::is_branch() const {
+    return children.size() == 3 &&
+           children[1].children.empty() &&
+           children[1].text.length() == 1 &&
+           children[1].text[0] == '|';
+}
+
+bool parser::node::is_optional() const {
+    return children.size() == 2 && children[1].text.length() == 1 && children[1].text.at(0) == '*';
+}
+
+bool parser::node::is_or() const {
+    return children.empty() && text.length() == 1 && text.at(0) == '|';
+}
+
+bool parser::node::is_star() const {
+    return children.empty() && text.length() == 1 && text.at(0) == '*';
+}
+
+bool parser::node::is_link() const {
+    return link.length() > 0;
+}
+

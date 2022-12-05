@@ -17,7 +17,7 @@ namespace parser {
         struct history_element {
             size_t rule;
             bool open;
-            std::string section;
+            size_t section;
             bool operator==(const history_element& other) const;
         };
         
@@ -36,7 +36,7 @@ namespace parser {
         
         solution parse_to_sequence(const std::string& input) const;
         
-        void print(const std::vector<parse_sequence>& seqvec) const;
+        void print(const std::vector<parse_sequence>& seqvec, const std::string input) const;
     private:
         bool sequence_accepts(const parse_sequence& current, const char c) const;
         
