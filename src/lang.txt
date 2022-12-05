@@ -1,0 +1,40 @@
+interface_subprogram_default ::= subprogram_name | <> [§ 6.5.4]
+interface_subprogram_specification ::=
+interface_procedure_specification | interface_function_specification [§ 6.5.4]
+interface_type_declaration ::=
+type identifier [is incomplete_type_definition] [§ 6.5.3]
+interface_type_indication ::=
+subtype_indication | unspecified_type_indication [§ 6.5.2]
+interface_variable_declaration ::=
+[ variable ] identifier_list : [ mode ] interface_type_indication
+[ := static_conditional_expression ] [§6.5.2]
+iteration_scheme ::=
+while condition
+| for loop_parameter_specification
+[§ 10.10]
+[§ 11.8]
+label ::= identifier
+letter ::= upper_case_letter | lower_case_letter [§ 15.4.2]
+letter_or_digit ::= letter | digit [§ 15.4.2]
+library_clause ::= library logical_name_list ; [§ 13.2]
+library_unit ::=
+primary_unit
+| secondary_unit [§ 13.1]
+literal ::=
+numeric_literal
+| enumeration_literal
+| string_literal
+| bit_string_literal
+| null [§ 9.3.2]
+logical_expression ::=
+relation { and relation }
+| relation { or relation }
+| relation { xor relation }
+| relation [ nand relation ]
+| relation [ nor relation ]
+| relation { xnor relation }
+[§ 9.1]
+logical_name ::= identifier [§ 13.2]
+logical_name_list ::= logical_name { , logical_name } [§ 13.2]
+logical_operator ::= and | or | nand | nor | xor | xnor [§ 9.2.1]
+loop_statement ::=

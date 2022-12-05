@@ -2,21 +2,18 @@
 #include <iostream>
 
 parser::node parser::node_generator::generate(const std::string& text) const
-{
-    std::cout << text << std::endl;
-    std::cout << extend_label(text, 0) << std::endl;
-    std::cout << extend_range(extend_label(text, 0), 0) << std::endl;
-    std::cout << extend_star(extend_range(extend_label(text, 0), 0), 0) << std::endl;
-    
-    
+{    
+    extend_label(text, 0);
+    extend_range(extend_label(text, 0), 0);
+    extend_star(extend_range(extend_label(text, 0), 0), 0);
+        
     auto extended_text = extend_or(extend_star(extend_range(extend_label(text, 0), 0), 0), 0);
 
-    std::cout << extended_text << std::endl;
-    
     node result(extended_text);
-
+    
     split_node(result);
     reduce_node(result);
+    link_node(result);
     clean_node(result);    
     
     return result;
@@ -393,6 +390,21 @@ void parser::node_generator::split_block_node(parser::node& n) const
     }
 }
 
+void parser::node_generator::link_node(parser::node& n) const {   
+    
+    if (
+        n.text.length() > 3 &&
+        *n.text.begin() == '[' &&
+        *n.text.rbegin() == ']'
+    ) {
+        n.link = n.text.substr(1, n.text.length() - 2);
+    }
+    
+    for (auto& c : n.children) {
+        link_node(c);
+    }
+}
+
 void parser::node_generator::clean_node(parser::node& n) const {
     std::string result;
     
@@ -400,6 +412,7 @@ void parser::node_generator::clean_node(parser::node& n) const {
     for (auto c : n.text) {
         if (escaped) {
             result += c;
+            escaped = false;
         } else {
             if (c == '\\') {
                 escaped = true;

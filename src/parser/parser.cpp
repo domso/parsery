@@ -8,7 +8,6 @@ void parser::parser::add_rule(const std::string& name, const std::string& rule) 
     m_nodes.push_back(m_generator.generate(rule));
     m_rule_map[name] = m_nodes.size() - 1;
     m_name_map[m_nodes.size() - 1] = name;
-    m_nodes.rbegin()->print();
 }
 
 void parser::parser::add_top_rule (const std::string& name, const std::string& rule) {
@@ -47,6 +46,7 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
 {
     parser::parser::solution result;
     std::vector<parser::parser::parse_sequence> sequence = m_initial_sequence;
+    std::vector<history_element> partial_history;
     
             auto t0 = std::chrono::steady_clock::now();
     for (size_t i = 0; i < input.length(); i++) {
@@ -57,7 +57,7 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
             auto t1 = std::chrono::steady_clock::now();
         for (auto& current : sequence) {
             if (sequence_accepts(current, input.at(i))) {                
-                //current.history[current.history.size() - 1].section += std::string(1, input.at(i));
+                current.history[current.history.size() - 1].section++;
 
                 if (current.parent) {
                     std::vector<size_t> tmp(current.path.size() + m_parents.at(*current.parent).size());
@@ -95,6 +95,10 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
             result.rejected = sequence;
             result.rejected_index = i;
             
+            for (auto& seq : result.rejected) {
+                seq.history.insert(seq.history.begin(), partial_history.begin(), partial_history.end());
+            }
+            
             return result;
         }
         
@@ -119,11 +123,33 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
         }    
         
         auto t4 = std::chrono::steady_clock::now();
-        sequence = std::move(final_seq);
         
                 measured_times[0] += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
                 measured_times[1] += std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
                 measured_times[2] += std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
+        
+        bool found = true;
+        
+        for (int i = 0; i < final_seq.size(); i++) {            
+            if (final_seq[0].history.size() < 2 || final_seq[i].history.size() < 2 || !(final_seq[0].history[0] == final_seq[i].history[0])) {
+                found = false;
+                break;
+            }            
+        }        
+        
+        
+        if (found) {
+            if (!final_seq.empty()) {
+                partial_history.push_back(final_seq[0].history[0]);
+            }            
+            
+            for (auto& s : final_seq) {
+                s.history.erase(s.history.begin());
+            }
+        }
+        
+        sequence = final_seq;
+        sequence = std::move(final_seq);
     }    
             auto t6 = std::chrono::steady_clock::now();
 
@@ -137,11 +163,12 @@ parser::parser::solution parser::parser::parse_to_sequence(const std::string& in
     
     for (auto& current : sequence) {
         if (current.path.empty() && (!current.parent)) {
+            current.history.insert(current.history.begin(), partial_history.begin(), partial_history.end());
             result.fully_accepted.push_back(current);
         } else {
             result.partial_accepted.push_back(current);
         }
-    }
+    }        
     
     return result;
 }
@@ -180,14 +207,7 @@ bool parser::parser::sequence_accepts(const parser::parser::parse_sequence& curr
    
    assert(!current.path.empty()) ;
     if (
-        n->children.size() == 3 &&
-        n->children[0].children.empty() &&
-        n->children[0].text.length() == 1 &&
-        n->children[1].children.empty() &&
-        n->children[1].text.length() == 1 &&
-        n->children[2].children.empty() &&
-        n->children[2].text.length() == 1 &&
-        n->children[1].text[0] == '-' &&
+        n->is_range() &&
         current.path[current.path.size() - 1] == 1
     ) {        
         return n->children[0].text[0] <= c && c <= n->children[2].text[0];    
@@ -225,14 +245,7 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
     }
     
     if (!(
-        n->children.size() == 3 &&
-        n->children[0].children.empty() &&
-        n->children[0].text.length() == 1 &&
-        n->children[1].children.empty() &&
-        n->children[1].text.length() == 1 &&
-        n->children[2].children.empty() &&
-        n->children[2].text.length() == 1 &&
-        n->children[1].text[0] == '-' &&
+        n->is_range() &&
         current.path[current.path.size() - 1] == 1
     )) {        
         if (current.path[current.path.size() - 1] + 1 < n->text.length()) {
@@ -253,15 +266,11 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
         int offset = 1;
         while (index_stack[i] + offset < node_stack[i]->children.size()) {            
             if (
-                node_stack[i]->children[index_stack[i] + offset].children.empty() &&
-                node_stack[i]->children[index_stack[i] + offset].text.length() == 1 &&
-                node_stack[i]->children[index_stack[i] + offset].text[0] == '|'
+                node_stack[i]->children[index_stack[i] + offset].is_or()
             ) {
                 break;
             } else if (
-                node_stack[i]->children[index_stack[i] + offset].children.empty() &&
-                node_stack[i]->children[index_stack[i] + offset].text.length() == 1 &&
-                node_stack[i]->children[index_stack[i] + offset].text[0] == '*'
+                node_stack[i]->children[index_stack[i] + offset].is_star()
             ) { 
             auto t1 = std::chrono::steady_clock::now();
                 auto s0 = node_initial_expansion(node_stack[i]->children[index_stack[i]]);
@@ -289,9 +298,7 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
             auto t4 = std::chrono::steady_clock::now();
 
                 if (
-                    node_stack[i]->children[index_stack[i] + offset].children.size() == 2 &&
-                    node_stack[i]->children[index_stack[i] + offset].children[1].text.length() > 0 &&
-                    node_stack[i]->children[index_stack[i] + offset].children[1].text[0] == '*'
+                    node_stack[i]->children[index_stack[i] + offset].is_optional()
                 ) {
                     offset++;
                 } else {
@@ -316,12 +323,8 @@ std::vector<parser::parser::parse_sequence> parser::parser::sequence_increment(c
 
 std::vector<parser::parser::parse_sequence> parser::parser::node_initial_expansion(const node& n) const {       
     if (n.children.empty()) {
-        if (
-            n.text.length() > 1 &&
-            n.text.at(0) == '[' &&
-            n.text.at(n.text.length() - 1) == ']'
-        ) {
-            auto id = m_rule_map.at(n.text.substr(1, n.text.length() - 2));
+        if (n.is_link()) {
+            auto id = m_rule_map.at(n.link);
             auto s0 = node_initial_expansion(m_nodes[id]);
             
             for (auto& s : s0) {
@@ -333,31 +336,16 @@ std::vector<parser::parser::parse_sequence> parser::parser::node_initial_expansi
         
         return {{{0}, {}}};
     } else {
-        if (n.children.size() == 3) {
-            if (
-                n.children[0].children.empty() &&
-                n.children[0].text.length() == 1 &&
-                n.children[1].children.empty() &&
-                n.children[1].text.length() == 1 &&
-                n.children[2].children.empty() &&
-                n.children[2].text.length() == 1 &&
-                n.children[1].text[0] == '-'
-            ) {
-                return {{{1}, {}}};
-            }
+        if (n.is_range()) {
+            return {{{1}, {}}};
+        }
             
-            if (
-                n.children[1].children.empty() &&
-                n.children[1].text.length() == 1 &&
-                n.children[1].text[0] == '|'
-            ) {
-                
-                auto s0 = node_initial_expansion(n.children[0]);
-                auto s1 = node_initial_expansion(n.children[2]);
-                                
-                return merge_sequences(s0, s1, 0, 2);
-            }
-        }  
+        if (n.is_branch()) {            
+            auto s0 = node_initial_expansion(n.children[0]);
+            auto s1 = node_initial_expansion(n.children[2]);
+                            
+            return merge_sequences(s0, s1, 0, 2);
+        }        
         
         std::vector<parser::parser::parse_sequence> result;    
     
@@ -369,12 +357,7 @@ std::vector<parser::parser::parse_sequence> parser::parser::node_initial_expansi
                 result.push_back(m);
             }
                 
-            if (!(
-                n.children[i].children.size() == 2 &&
-                n.children[i].children[1].children.empty() &&
-                n.children[i].children[1].text.length() == 1 &&
-                n.children[i].children[1].text[0] == '*'            
-            )) {
+            if (!n.children[i].is_optional()) {
                 break;
             }            
         }   
@@ -463,8 +446,9 @@ std::vector<parser::parser::parse_sequence> parser::parser::add_sequences(parser
     return result;
 }
 
-void parser::parser::print(const std::vector<parse_sequence>& seqvec) const {
+void parser::parser::print(const std::vector<parse_sequence>& seqvec, const std::string input) const {
     int level = 0;
+    size_t current = 0;
     for (auto& seq : seqvec) {
         level = 0;
         std::cout << "### Sequence ###" << std::endl;
@@ -484,11 +468,12 @@ void parser::parser::print(const std::vector<parse_sequence>& seqvec) const {
                 std::cout << "</" << m_name_map.at(h.rule) << ">" << std::endl;                
                 level--;
             }
-            if (h.section.length() > 0) {            
+            if (h.section > 0) {            
                 for (int i = 0; i < level; i++) {
                     std::cout << "    ";
                 }
-                std::cout << "'" << h.section << "'" << std::endl;
+                std::cout << "'" << input.substr(current, h.section) << "'" << std::endl;
+                current += h.section;
             }
         }
         
