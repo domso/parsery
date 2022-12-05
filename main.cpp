@@ -82,10 +82,9 @@ private:
 int main(int argc, char **argv) {
 //     if (argc == 2) {
     
-/*
     grammar_reader gr;
     gr.read("../1076-2019.txt");
-    */
+    return 0;
     
     parser::parser p;
     
