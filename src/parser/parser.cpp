@@ -10,7 +10,7 @@ void parser::add_rule(const std::string& name, const std::string& rule) {
     m_name_map[m_nodes.size() - 1] = name;
 }
 
-void parser::add_top_rule (const std::string& name, const std::string& rule) {
+void parser::add_top_rule(const std::string& name, const std::string& rule) {
     add_rule(name, rule);
     m_top_rules.push_back(name);
 }
@@ -54,8 +54,9 @@ parser::solution parser::parse_to_sequence(const std::string& input)
     }    
     
     for (auto& current : context.sequence) {
+        current.history.insert(current.history.begin(), context.partial_history.begin(), context.partial_history.end());
+
         if (current.path.empty()) {
-            current.history.insert(current.history.begin(), context.partial_history.begin(), context.partial_history.end());
             context.result.fully_accepted.push_back(current);
         } else {
             context.result.partial_accepted.push_back(current);
@@ -331,8 +332,8 @@ std::vector<parser::parse_sequence> parser::add_sequences(parser::parse_sequence
 
 void parser::print(const std::vector<parse_sequence>& seqvec, const std::string input) const {
     int level = 0;
-    size_t current = 0;
     for (auto& seq : seqvec) {
+        size_t current = 0;
         level = 0;
         std::cout << "### Sequence ###" << std::endl;
         std::cout << "# History := " << std::endl;
@@ -367,5 +368,51 @@ void parser::print(const std::vector<parse_sequence>& seqvec, const std::string 
         }
         std::cout << std::endl;
     }
+}
+
+parser::parsed_node parser::build_tree(const std::vector<parse_sequence>& sequences, const std::string& input) const {
+    parsed_node result;
+
+    for (auto& sequence : sequences) {
+        std::vector<parsed_node*> stack;
+        stack.push_back(&result);
+        size_t current_pos = 0;
+        size_t line_num = 0;
+        size_t column_num = 0;
+
+        for (auto& h : sequence.history) {            
+            if (h.open) {
+                parsed_node open_node;
+                open_node.name = m_name_map.at(h.rule);
+                open_node.line = line_num;
+                open_node.column = column_num;
+
+                stack[stack.size() - 1]->children.push_back(open_node);
+                stack.push_back(&(*stack[stack.size() - 1]->children.rbegin()));
+            } else {
+                stack.pop_back();
+            }
+            if (h.section > 0) {            
+                parsed_node text_node;
+                text_node.name = input.substr(current_pos, h.section);
+                text_node.line = line_num;
+                text_node.column = column_num;
+
+                for (const auto c : text_node.name) {
+                    if (c == '\n') {
+                        line_num++;
+                        column_num = 0;
+                    } else {
+                        column_num++;
+                    }
+                }
+
+                stack[stack.size() - 1]->children.push_back(text_node);
+                current_pos += h.section;
+            }
+        }
+    }
+
+    return result;
 }
 }

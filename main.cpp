@@ -65,11 +65,8 @@ public:
                                         
         
         auto blub = p.parse_to_sequence(text);
-        std::cout << "Part" << std::endl;
-        //p.print(blub.partial_accepted);
-        std::cout << "Solution" << std::endl;
-        p.print(blub.fully_accepted, text);
-        //p.print(blub.fully_accepted);
+        auto tree = p.build_tree(blub.fully_accepted, text);
+        tree.print(0);
     }
     
 private:
@@ -80,25 +77,28 @@ private:
 
 
 int main(int argc, char **argv) {
-//     if (argc == 2) {
-    
+    /*
     grammar_reader gr;
     gr.read("../1076-2019.txt");
     return 0;
-    
+    */
     parser::parser p;
     
     p.add_rule("label", "(a-z|A-Z)(a-z|A-Z|0-9)*");
     p.add_rule("number", "(0-9)(0-9)*");
     p.add_rule("operator", "(+|\\-|\\*|/|=)");
-    p.add_top_rule("term", "([number]|[label]) *[operator] *([number]|[label])( *[operator] *([number]|[label]))*");
+    p.add_top_rule("term", "([label]|[number]) *[operator] *([term]|[number]|[label])");
      
     p.init();
                                      
     auto text = "1 + 2 * 3";
     auto blub = p.parse_to_sequence(text);
-    std::cout << "Solution" << std::endl;
-        p.print(blub.fully_accepted, text);
+    std::cout << "fully" << std::endl;
+    p.build_tree(blub.fully_accepted, text).print(0);
+    std::cout << "partial" << std::endl;
+    p.build_tree(blub.partial_accepted, text).print(0);
+    std::cout << "rejected" << std::endl;
+    p.build_tree(blub.rejected, text).print(0);
 
     return 0;
 }

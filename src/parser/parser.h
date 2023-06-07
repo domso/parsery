@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <optional>
+#include <iostream>
 
 #include "node_generator.h"
 
@@ -38,6 +39,39 @@ namespace parser {
         solution parse_to_sequence(const std::string& input);
         
         void print(const std::vector<parse_sequence>& seqvec, const std::string input) const;
+
+
+        struct parsed_node {
+            std::string name;
+            std::vector<parsed_node> children;
+            size_t line;
+            size_t column;
+
+            void print(const int level) const {
+                for (int i = 0; i < level; i++) {
+                    std::cout << "    ";
+                }
+                if (children.empty()) {
+                    if (name.length() > 0) {
+                        std::cout << "'" << name << "' [" + std::to_string(line) + ":" + std::to_string(column) + "]" << std::endl;
+                    }
+                } else {
+                    if (name.length() > 0) {
+                        std::cout << "'" << name << "' [" + std::to_string(line) + ":" + std::to_string(column) + "] {" << std::endl;
+                    } else {
+                        std::cout << "{" << std::endl;
+                    }
+                    for (const auto& child : children) {
+                        child.print(level + 1);
+                    }
+                    for (int i = 0; i < level; i++) {
+                        std::cout << "    ";
+                    }
+                    std::cout << "}" << std::endl;
+                }
+            }
+        };
+        parsed_node build_tree(const std::vector<parse_sequence>& sequences, const std::string& input) const;
     private:
         struct parse_context {
             parser::parser::solution result;
@@ -53,6 +87,7 @@ namespace parser {
         std::vector<parse_sequence> node_initial_expansion(const node& n) const;        
         std::vector<parse_sequence> merge_sequences(const std::vector<parse_sequence>& s0, const std::vector<parse_sequence>& s1, const size_t n0, const size_t n1) const;
         std::vector<parse_sequence> add_sequences(parse_sequence& current, const std::vector<parse_sequence>& s0) const;
+
         
         template<typename T>
         bool contains(const std::vector<T>& vec, const T& o) const {
