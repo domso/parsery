@@ -1,4 +1,4 @@
-absolute_pathname ::= . partial_pathname 
+absolute_pathname ::= . partial_pathname | asd
 [§ 8.7]
 
 abstract_literal ::= decimal_literal | based_literal 
