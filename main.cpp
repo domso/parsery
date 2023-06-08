@@ -29,12 +29,27 @@ struct C {
 
 struct root {
     typedef int type;
-    static constexpr auto label = "Root";
+    static constexpr auto label = "root";
+};
+
+struct leaf {
+    typedef int type;
+    static constexpr auto label = "leaf";
 };
 
 struct nop {
     typedef int type;
     static constexpr auto label = "nop";
+};
+
+struct call {
+    typedef std::string type;
+    static constexpr auto label = "call";
+};
+
+struct join {
+    typedef std::string type;
+    static constexpr auto label = "join";
 };
 
 struct character {
@@ -47,7 +62,7 @@ struct range {
     static constexpr auto label = "range";
 };
 
-typedef type_union<A, B, C, root, nop, character, range> concrete_node_type;
+typedef type_union<A, B, C, root, leaf, join, nop, call, character, range> concrete_node_type;
 typedef type_union<A, B, C> concrete_edge_type;
 
 typedef graph_node<
@@ -67,8 +82,10 @@ bool accepts(const std::shared_ptr<concrete_graph_type>& node, const char cmp) {
     return false;
 }
 
-void sequencer(std::shared_ptr<concrete_graph_type>& start, const std::string text) {
+void sequencer(std::shared_ptr<concrete_graph_type>& start, std::shared_ptr<concrete_graph_type>& test, const std::string text) {
     std::vector<std::pair<size_t, std::shared_ptr<concrete_graph_type>>> node_stack;
+
+    std::vector<std::shared_ptr<concrete_graph_type>> call_stack;
 
     node_stack.push_back({0, start});
 
@@ -82,10 +99,24 @@ void sequencer(std::shared_ptr<concrete_graph_type>& start, const std::string te
             node_top->child(index_top, [&](const std::shared_ptr<concrete_graph_type>& child) {
                 current = child;
             });
+                std::cout << *it << " " << current->local.to_string() <<  std::endl;
 
-        std::cout << *it << " " << current->local.to_string() << std::endl;
 
             if (current->local.is<root>() || current->local.is<nop>()) {
+                node_stack.push_back({0, current});
+            } else if (current->local.is<leaf>()) {
+                if (call_stack.empty()) {
+                std::cout << "empty no solution" << std::endl;
+                    return; //should never happen
+                }
+                node_stack.push_back({0, current});
+                node_stack.push_back({0, *call_stack.rbegin()});
+                call_stack.pop_back();
+            } else if (auto next = current->local.get<call>()) {
+                call_stack.push_back(current);
+                node_stack.push_back({0, current});
+                node_stack.push_back({0, test});
+            } else if (auto next = current->local.get<join>()) {
                 node_stack.push_back({0, current});
             } else if (accepts(current, *it)) {
                 ++it;
@@ -94,8 +125,12 @@ void sequencer(std::shared_ptr<concrete_graph_type>& start, const std::string te
                 index_top++;
             }
         } else {
-            if (!(node_top->local.is<root>() || node_top->local.is<nop>())) {
+            if (!(node_top->local.is<root>() || node_top->local.is<nop>() || node_top->local.is<leaf>() || node_top->local.is<call>() || node_top->local.is<join>())) {
                 --it;
+            }
+
+            if (node_top->local.is<join>()) {
+                call_stack.push_back(node_top);
             }
 
             node_stack.pop_back();
@@ -109,7 +144,12 @@ void sequencer(std::shared_ptr<concrete_graph_type>& start, const std::string te
     }
 
     for (const auto& [index, node] : node_stack) {
-        std::cout << index << " " << node->local.to_string() << std::endl;
+        std::shared_ptr<concrete_graph_type> current;
+        node->child(index, [&](const std::shared_ptr<concrete_graph_type>& child) {
+            current = child;
+        });
+
+        std::cout << index << " " << current->local.to_string() << std::endl;
     }
 }
 
@@ -153,7 +193,7 @@ public:
     
         if (fragment_counter == 0) {
             start->local.cast_to<root>(fragment_counter);
-            end = start;
+            end->local.cast_to<leaf>(fragment_counter);
         } else {
             start->local.cast_to<nop>(fragment_counter);
             end->local.cast_to<nop>(fragment_counter + 1);
@@ -193,7 +233,17 @@ public:
             return {start, end};
         }
         if (node.is_link()) {
+            auto link_node = std::make_shared<concrete_graph_type>();
+            auto join_node = std::make_shared<concrete_graph_type>();
 
+            link_node->local.cast_to<call>(node.link);
+            join_node->local.cast_to<join>(node.link);
+
+            start->make_edge(link_node);
+            link_node->make_edge(join_node);
+            join_node->make_edge(end);
+
+            return {start, end};
         }
         if (node.text.length() == 0) {
             current = start;
@@ -238,19 +288,26 @@ int main(int argc, char **argv) {
     parser::node_generator p;
     
 {
-    auto n = p.generate("(hal*o)(a-z|A-Z)(((a-z)!)|A-Z|0-9)*");
+    auto n = p.generate("x = [test] \\* [test]");
+    auto m = p.generate("(0-9) + (0-9)");
     //auto n = p.generate("o*");
     n.print();
 
     node_converter conv;
     auto [start, end] = conv.node_to_fragment(n);
+    conv.fragment_counter = 0;
+    auto [start2, end2] = conv.node_to_fragment(m);
 
-    //std::cout << start->to_string() << std::endl;
-    conv.remove_nops(start);
-    start->untag_nested_children();
     std::cout << start->to_string() << std::endl;
+    conv.remove_nops(start);
+    conv.remove_nops(start2);
+    start->untag_nested_children();
+    start2->untag_nested_children();
 
-    sequencer(start, "haloaa!");
+    std::cout << start->to_string() << std::endl;
+    std::cout << start2->to_string() << std::endl;
+
+    sequencer(start, start2, "x = 1 + 2 * 3 + 4");
 }
 
 
