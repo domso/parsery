@@ -3,10 +3,6 @@
 
 parser::node parser::node_generator::generate(const std::string& text) const
 {    
-    extend_label(text, 0);
-    extend_range(extend_label(text, 0), 0);
-    extend_star(extend_range(extend_label(text, 0), 0), 0);
-        
     auto extended_text = extend_or(extend_star(extend_range(extend_label(text, 0), 0), 0), 0);
 
     node result(extended_text);
@@ -138,7 +134,7 @@ std::string parser::node_generator::extend_or(const std::string& text, const int
                                 brackets--;
                             }
                             
-                            if (brackets == -1 || text.at(j) == '|') {
+                            if (brackets == -1 || (brackets == 0 && text.at(j) == '|')) {
                                 end = j - 1;
                                 break;
                             }
