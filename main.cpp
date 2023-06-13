@@ -242,113 +242,186 @@ private:
         return false;
     }
 
+    struct parse_stack_item {
+        size_t taken_path;
+        std::shared_ptr<concrete_graph_type> previous_node;
+        std::string::const_iterator text_position;
+        std::string::const_iterator max_reached_text_position;
+
+        bool operator==(const parse_stack_item& other) const {
+            return 
+                taken_path == other.taken_path &&
+                previous_node == other.previous_node &&
+                text_position == other.text_position &&
+                max_reached_text_position == other.max_reached_text_position;
+        }
+    };
+
+    struct parse_stack {
+        std::vector<parse_stack_item> nodes;
+        std::vector<std::shared_ptr<concrete_graph_type>> calls;
+
+        void init(const std::string& text, const std::shared_ptr<concrete_graph_type>& root) {
+            nodes.push_back({0, root, text.begin(), text.begin()});
+        }
+
+        std::shared_ptr<concrete_graph_type> current() {
+            std::shared_ptr<concrete_graph_type> current;
+
+            if (!nodes.empty()) {
+                auto& item = *nodes.rbegin();
+                
+                if (item.previous_node != nullptr && item.taken_path < item.previous_node->degree()) {
+                    item.previous_node->child(item.taken_path, [&](const std::shared_ptr<concrete_graph_type>& child) {
+                        current = child;
+                    });
+                }
+            }
+
+            return current;
+        }
+
+        std::shared_ptr<concrete_graph_type> last() {
+            std::shared_ptr<concrete_graph_type> current;
+
+            if (!nodes.empty()) {
+                auto& item = *nodes.rbegin();
+                
+                if (item.previous_node != nullptr && item.taken_path < item.previous_node->degree()) {
+                    current = item.previous_node;
+                }
+            }
+
+            return current;
+        }
+
+
+        void branch_to_next() {
+            if (!nodes.empty()) {
+                auto& item = *nodes.rbegin();
+                item.taken_path++;                
+            }
+        }
+
+        void push_node(const parse_stack_item& item) {
+            nodes.push_back(item);
+        }
+        void pop_node() {
+            nodes.pop_back();
+        }
+        void push_call(const std::shared_ptr<concrete_graph_type>& call) {
+            calls.push_back(call);
+        }
+        void pop_call() {
+            calls.pop_back();
+        }
+        std::shared_ptr<concrete_graph_type> current_call() {
+            if (calls.empty()) {
+                return nullptr;
+            } else {
+                return *calls.rbegin();
+            }
+        }
+        bool contains(const parse_stack_item& item) {
+            for (auto rit = nodes.rbegin(); rit != nodes.rend(); ++rit) {
+                if (item == *rit) {
+                    return true;
+                }
+
+                if (rit->text_position < item.text_position) {
+                    return false;
+                }
+            }
+            
+            return false;
+        }
+
+
+    };
+
+    parse_stack m_stack;
     void sequencer(const std::string text) {
-        std::vector<std::pair<size_t, std::shared_ptr<concrete_graph_type>>> node_stack;
-        std::vector<std::pair<std::string::const_iterator, std::string::const_iterator>> node_iterator_stack;
-        std::vector<std::shared_ptr<concrete_graph_type>> call_stack;
+        m_stack.init(text, m_top_rule);
+
+
 
         auto it = text.begin();
         auto max_it = it;
 
-        node_stack.push_back({0, m_top_rule});
-        node_iterator_stack.push_back({it, max_it});
 
         bool is_solution = false;
         while (!is_solution) {
-            auto& [index_top, node_top] = *node_stack.rbegin();
+            auto current = m_stack.current();
             max_it = std::max(max_it, it);
 
-            if(node_top == nullptr) {
-                return;
-            }
-
-            if (index_top < node_top->degree()) {
-                std::shared_ptr<concrete_graph_type> current;
-                node_top->child(index_top, [&](const std::shared_ptr<concrete_graph_type>& child) {
-                    current = child;
-                });
+            if (current != nullptr) {
                 if (current->local.is<root>() || current->local.is<nop>()) {
-                    node_stack.push_back({0, current});
-                    node_iterator_stack.push_back({it, max_it});
+                    m_stack.push_node({0, current, it, max_it});
                 } else if (current->local.is<leaf>()) {
-                    if (call_stack.empty()) {
+                    auto call = m_stack.current_call();
+                    if (call == nullptr) {
                         // current path leads to final leaf node
                         if (it != text.end()) {
-                            index_top++;
+                            m_stack.branch_to_next();
                         } else {
                             is_solution = true;
                         }
                     } else {
-                        node_stack.push_back({0, current});
-                        node_stack.push_back({0, *call_stack.rbegin()});
-                        node_iterator_stack.push_back({it, max_it});
-                        node_iterator_stack.push_back({it, max_it});
-                        call_stack.pop_back();
+                        m_stack.push_node({0, current, it, max_it});
+                        m_stack.push_node({0, call, it, max_it});
+
+                        m_stack.pop_call();
                     }
                 } else if (auto next = current->local.get<call>()) {
-                    int i = node_iterator_stack.size() - 1;
-                    bool found = false;
-                    for (auto rit = node_stack.rbegin(); rit != node_stack.rend(); ++rit) {
-                        if (auto prev_next = rit->second->local.get<call>()) {
-                            if (rit->first == 0 && **prev_next == **next && it == node_iterator_stack[i].first && max_it == node_iterator_stack[i].second) {
-                                found = true;
-                                break;
-                            }
-                        }
-
-                        if (node_iterator_stack[i].first < it) {
-                            break;
-                        }
-                        
-                        i--;
-                    }
+                    bool found = m_stack.contains({0, m_nested_rules[**next], it, max_it});
 
                     if (found) {
-                        index_top++;
+                        m_stack.branch_to_next();
                     } else {
                         current->child(0, [&](const std::shared_ptr<concrete_graph_type>& child) {
-                            call_stack.push_back(child);
+                            m_stack.push_call(child);
                         });
-                        node_stack.push_back({0, current});
-                        node_stack.push_back({0, m_nested_rules[**next]});
-                        node_iterator_stack.push_back({it, max_it});
-                        node_iterator_stack.push_back({it, max_it});
+
+                        m_stack.push_node({0, current, it, max_it});
+                        m_stack.push_node({0, m_nested_rules[**next], it, max_it});
                     }
                 } else if (auto next = current->local.get<join>()) {
-                    node_stack.push_back({0, current});
-                    node_iterator_stack.push_back({it, max_it});
+                    m_stack.push_node({0, current, it, max_it});
                 } else if (it < text.end() && accepts(current, *it)) {
                     ++it;
-                    node_stack.push_back({0, current});
-                    node_iterator_stack.push_back({it, max_it});
+                    m_stack.push_node({0, current, it, max_it});
                 } else {
-                    index_top++;
+                    m_stack.branch_to_next();
                 }
+
             } else {
+                auto node_top = m_stack.last();
+
+                if (node_top == nullptr) {
+                    std::cout << "no solutionb" << std::endl;
+                    return;
+                }
+
                 if (!(node_top->local.is<root>() || node_top->local.is<nop>() || node_top->local.is<leaf>() || node_top->local.is<call>() || node_top->local.is<join>())) {
                     --it;
                 }
 
                 if (node_top->local.is<join>()) {
-                    call_stack.push_back(node_top);
+                    m_stack.push_call(node_top);
                 }
                 if (node_top->local.is<call>()) {
-                    call_stack.pop_back();
+                    m_stack.pop_call();
                 }
 
-                node_stack.pop_back();
-                node_iterator_stack.pop_back();
-                if (node_stack.empty()) {
-                    std::cout << "no solution" << std::endl;
-                    return;
-                } else {
-                    node_stack.rbegin()->first++;
-                }
+                m_stack.pop_node();
+
+                m_stack.branch_to_next();
             }
         }
 
         std::cout << "solution" << std::endl;
 
+/*
         int i = 0;
         int level = 0;
         for (const auto& [index, node] : node_stack) {
@@ -368,8 +441,8 @@ private:
             if (node->local.is<call>()) {
                 level += 4;
             }
-
         }
+        */
     }
 
     node_converter m_converter;
