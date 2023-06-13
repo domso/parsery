@@ -244,16 +244,18 @@ private:
 
     void sequencer(const std::string text) {
         std::vector<std::pair<size_t, std::shared_ptr<concrete_graph_type>>> node_stack;
-        std::vector<std::string::const_iterator> node_iterator_stack;
+        std::vector<std::pair<std::string::const_iterator, std::string::const_iterator>> node_iterator_stack;
         std::vector<std::shared_ptr<concrete_graph_type>> call_stack;
 
         auto it = text.begin();
+        auto max_it = it;
 
         node_stack.push_back({0, m_top_rule});
-        node_iterator_stack.push_back(it);
+        node_iterator_stack.push_back({it, max_it});
 
         while (it != text.end()) {
             auto& [index_top, node_top] = *node_stack.rbegin();
+            max_it = std::max(max_it, it);
 
             if(node_top == nullptr) {
                 std::cout << "null" << std::endl;
@@ -274,7 +276,7 @@ private:
                 }
                 if (current->local.is<root>() || current->local.is<nop>()) {
                     node_stack.push_back({0, current});
-                    node_iterator_stack.push_back(it);
+                    node_iterator_stack.push_back({it, max_it});
                 } else if (current->local.is<leaf>()) {
                     if (call_stack.empty()) {
                         // current path leads to final leaf node
@@ -283,8 +285,8 @@ private:
                     } else {
                         node_stack.push_back({0, current});
                         node_stack.push_back({0, *call_stack.rbegin()});
-                        node_iterator_stack.push_back(it);
-                        node_iterator_stack.push_back(it);
+                        node_iterator_stack.push_back({it, max_it});
+                        node_iterator_stack.push_back({it, max_it});
                         call_stack.pop_back();
                     }
                 } else if (auto next = current->local.get<call>()) {
@@ -292,13 +294,13 @@ private:
                     bool found = false;
                     for (auto rit = node_stack.rbegin(); rit != node_stack.rend(); ++rit) {
                         if (auto prev_next = rit->second->local.get<call>()) {
-                            if (rit->first == 0 && **prev_next == **next && it == node_iterator_stack[i]) {
+                            if (rit->first == 0 && **prev_next == **next && it == node_iterator_stack[i].first && max_it == node_iterator_stack[i].second) {
                                 found = true;
                                 break;
                             }
                         }
 
-                        if (node_iterator_stack[i] < it) {
+                        if (node_iterator_stack[i].first < it) {
                             break;
                         }
                         
@@ -313,17 +315,17 @@ private:
                         });
                         node_stack.push_back({0, current});
                         node_stack.push_back({0, m_nested_rules[**next]});
-                        node_iterator_stack.push_back(it);
-                        node_iterator_stack.push_back(it);
+                        node_iterator_stack.push_back({it, max_it});
+                        node_iterator_stack.push_back({it, max_it});
 
                     }
                 } else if (auto next = current->local.get<join>()) {
                     node_stack.push_back({0, current});
-                    node_iterator_stack.push_back(it);
+                    node_iterator_stack.push_back({it, max_it});
                 } else if (accepts(current, *it)) {
                     ++it;
                     node_stack.push_back({0, current});
-                    node_iterator_stack.push_back(it);
+                    node_iterator_stack.push_back({it, max_it});
                 } else {
                     index_top++;
                 }
@@ -353,6 +355,8 @@ private:
             }
         }
 
+        std::cout << "solution" << std::endl;
+
         int i = 0;
         int level = 0;
         for (const auto& [index, node] : node_stack) {
@@ -366,11 +370,7 @@ private:
                 level -= 4;
             }
             level = std::max(0, level);
-            if (!node->local.is<root>()) {
-                if (!node->local.is<leaf>()) {
-                    std::cout << std::string(level, ' ') << node->local.to_string() << " " << *node_iterator_stack[i] << std::endl;
-                }
-            }
+                    std::cout << std::string(level, ' ') << node->local.to_string() << " " << *node_iterator_stack[i].first << std::endl;
             i++;
 
             if (node->local.is<call>()) {
@@ -398,7 +398,7 @@ int main(int argc, char **argv) {
 
     p.add_top_rule("term", "([number])|(((\\()|())[term] [operator] [term]((\\))|()))");
 
-    p.parse("5 + (1 + 2) + 1");
+    p.parse("(5 + (1 + 2) + 1) * 5");
     
 
 
