@@ -253,12 +253,12 @@ private:
         node_stack.push_back({0, m_top_rule});
         node_iterator_stack.push_back({it, max_it});
 
-        while (it != text.end()) {
+        bool is_solution = false;
+        while (!is_solution) {
             auto& [index_top, node_top] = *node_stack.rbegin();
             max_it = std::max(max_it, it);
 
             if(node_top == nullptr) {
-                std::cout << "null" << std::endl;
                 return;
             }
 
@@ -267,21 +267,17 @@ private:
                 node_top->child(index_top, [&](const std::shared_ptr<concrete_graph_type>& child) {
                     current = child;
                 });
-                std::cout << *it << " " << current->local.to_string() <<  std::endl;
-                for (const auto& [index, node] : node_stack) {
-                    std::cout << "    " << index << " " << node->local.to_string() << std::endl;
-                }
-                for (auto& call : call_stack) {
-                    std::cout << "        " << call->local.to_string() << std::endl;
-                }
                 if (current->local.is<root>() || current->local.is<nop>()) {
                     node_stack.push_back({0, current});
                     node_iterator_stack.push_back({it, max_it});
                 } else if (current->local.is<leaf>()) {
                     if (call_stack.empty()) {
                         // current path leads to final leaf node
-                        std::cout << "redo to root" << std::endl;
-                        index_top++;
+                        if (it != text.end()) {
+                            index_top++;
+                        } else {
+                            is_solution = true;
+                        }
                     } else {
                         node_stack.push_back({0, current});
                         node_stack.push_back({0, *call_stack.rbegin()});
@@ -317,12 +313,11 @@ private:
                         node_stack.push_back({0, m_nested_rules[**next]});
                         node_iterator_stack.push_back({it, max_it});
                         node_iterator_stack.push_back({it, max_it});
-
                     }
                 } else if (auto next = current->local.get<join>()) {
                     node_stack.push_back({0, current});
                     node_iterator_stack.push_back({it, max_it});
-                } else if (accepts(current, *it)) {
+                } else if (it < text.end() && accepts(current, *it)) {
                     ++it;
                     node_stack.push_back({0, current});
                     node_iterator_stack.push_back({it, max_it});
@@ -330,17 +325,14 @@ private:
                     index_top++;
                 }
             } else {
-                std::cout << "pop" << std::endl;
                 if (!(node_top->local.is<root>() || node_top->local.is<nop>() || node_top->local.is<leaf>() || node_top->local.is<call>() || node_top->local.is<join>())) {
                     --it;
                 }
 
                 if (node_top->local.is<join>()) {
-                    std::cout << "asd: " << node_top->local.to_string() << std::endl;
                     call_stack.push_back(node_top);
                 }
                 if (node_top->local.is<call>()) {
-                    std::cout << "pop: " << node_top->local.to_string() << std::endl;
                     call_stack.pop_back();
                 }
 
@@ -370,7 +362,7 @@ private:
                 level -= 4;
             }
             level = std::max(0, level);
-                    std::cout << std::string(level, ' ') << node->local.to_string() << " " << *node_iterator_stack[i].first << std::endl;
+                    std::cout << std::string(level, ' ') << node->local.to_string() << " " << std::endl;
             i++;
 
             if (node->local.is<call>()) {
