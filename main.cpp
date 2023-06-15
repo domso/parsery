@@ -229,6 +229,8 @@ public:
     }
     void parse(const std::string& text) {
         sequencer(text);
+        std::cout << "solution" << std::endl;
+        m_stack.print();
     }
 private:
     bool accepts(const std::shared_ptr<concrete_graph_type>& node, const char cmp) {
@@ -287,7 +289,7 @@ private:
             if (!nodes.empty()) {
                 auto& item = *nodes.rbegin();
                 
-                if (item.previous_node != nullptr && item.taken_path < item.previous_node->degree()) {
+                if (item.previous_node != nullptr) {
                     current = item.previous_node;
                 }
             }
@@ -322,127 +324,137 @@ private:
                 return *calls.rbegin();
             }
         }
-        bool contains(const parse_stack_item& item) {
+        bool contains(const std::string& next, const std::string::const_iterator& m_it, const std::string::const_iterator& m_max_it) {
             for (auto rit = nodes.rbegin(); rit != nodes.rend(); ++rit) {
-                if (item == *rit) {
-                    return true;
+                if (auto prev_next = rit->previous_node->local.get<call>()) {
+                    if (rit->taken_path == 0 && **prev_next == next && m_it == rit->text_position && m_max_it == rit->max_reached_text_position) {
+                        return true;
+                    }
                 }
 
-                if (rit->text_position < item.text_position) {
+                if (rit->text_position < m_it) {
                     return false;
                 }
             }
-            
+
             return false;
+        }
+        void print() {
+            int level = 0;
+            for (const auto& item : nodes) {
+                std::shared_ptr<concrete_graph_type> current;
+                item.previous_node->child(item.taken_path, [&](const std::shared_ptr<concrete_graph_type>& child) {
+                    current = child;
+                });
+
+                if (item.previous_node->local.is<join>()) {
+                    level -= 4;
+                }
+                level = std::max(0, level);
+                std::cout << std::string(level, ' ') << item.previous_node->local.to_string() << " " << std::endl;
+
+                if (item.previous_node->local.is<call>()) {
+                    level += 4;
+                }
+            }
         }
 
 
     };
 
     parse_stack m_stack;
-    void sequencer(const std::string text) {
+    std::string::const_iterator m_it;
+    std::string::const_iterator m_max_it;
+
+    bool check_current_node(const std::shared_ptr<concrete_graph_type>& current, const std::string& text) {
+        std::cout << current->local.to_string() << std::endl;
+
+        if (current->local.is<root>() || current->local.is<nop>() || current->local.is<join>()) {
+            m_stack.push_node({0, current, m_it, m_max_it});
+        } else if (current->local.is<leaf>()) {
+            auto call = m_stack.current_call();
+            if (call == nullptr) {
+                // current path leads to final leaf node
+                if (m_it != text.end()) {
+                    m_stack.branch_to_next();
+                } else {
+                    return true;
+                }
+            } else {
+                m_stack.push_node({0, current, m_it, m_max_it});
+                m_stack.push_node({0, call, m_it, m_max_it});
+
+                m_stack.pop_call();
+            }
+        } else if (auto next = current->local.get<call>()) {
+            bool found = m_stack.contains(**next, m_it, m_max_it);
+
+            if (found) {
+                m_stack.branch_to_next();
+            } else {
+                current->child(0, [&](const std::shared_ptr<concrete_graph_type>& child) {
+                    m_stack.push_call(child);
+                });
+
+                m_stack.push_node({0, current, m_it, m_max_it});
+                m_stack.push_node({0, m_nested_rules[**next], m_it, m_max_it});
+            }
+        } else if (m_it < text.end() && accepts(current, *m_it)) {
+            ++m_it;
+            m_stack.push_node({0, current, m_it, m_max_it});
+        } else {
+            std::cout << "branch_to_next" << std::endl;
+            m_stack.branch_to_next();
+        }
+
+        return false;
+    }
+
+    bool backtrack_to_previous_node() {
+        auto node_top = m_stack.last();
+
+        if (node_top == nullptr) {
+            std::cout << "no solutionb" << std::endl;
+            return false;
+        }
+
+        if (!(node_top->local.is<root>() || node_top->local.is<nop>() || node_top->local.is<leaf>() || node_top->local.is<call>() || node_top->local.is<join>())) {
+            --m_it;
+        }
+
+        if (node_top->local.is<join>()) {
+            m_stack.push_call(node_top);
+        }
+        if (node_top->local.is<call>()) {
+            m_stack.pop_call();
+        }
+
+        m_stack.pop_node();
+        m_stack.branch_to_next();
+
+        return true;
+    }
+
+    bool sequencer(const std::string text) {
         m_stack.init(text, m_top_rule);
 
+        m_it = text.begin();
+        m_max_it = m_it;
 
-
-        auto it = text.begin();
-        auto max_it = it;
-
-
-        bool is_solution = false;
-        while (!is_solution) {
+        while (true) {
+            m_max_it = std::max(m_max_it, m_it);
             auto current = m_stack.current();
-            max_it = std::max(max_it, it);
 
             if (current != nullptr) {
-                if (current->local.is<root>() || current->local.is<nop>()) {
-                    m_stack.push_node({0, current, it, max_it});
-                } else if (current->local.is<leaf>()) {
-                    auto call = m_stack.current_call();
-                    if (call == nullptr) {
-                        // current path leads to final leaf node
-                        if (it != text.end()) {
-                            m_stack.branch_to_next();
-                        } else {
-                            is_solution = true;
-                        }
-                    } else {
-                        m_stack.push_node({0, current, it, max_it});
-                        m_stack.push_node({0, call, it, max_it});
-
-                        m_stack.pop_call();
-                    }
-                } else if (auto next = current->local.get<call>()) {
-                    bool found = m_stack.contains({0, m_nested_rules[**next], it, max_it});
-
-                    if (found) {
-                        m_stack.branch_to_next();
-                    } else {
-                        current->child(0, [&](const std::shared_ptr<concrete_graph_type>& child) {
-                            m_stack.push_call(child);
-                        });
-
-                        m_stack.push_node({0, current, it, max_it});
-                        m_stack.push_node({0, m_nested_rules[**next], it, max_it});
-                    }
-                } else if (auto next = current->local.get<join>()) {
-                    m_stack.push_node({0, current, it, max_it});
-                } else if (it < text.end() && accepts(current, *it)) {
-                    ++it;
-                    m_stack.push_node({0, current, it, max_it});
-                } else {
-                    m_stack.branch_to_next();
+                if (check_current_node(current, text)) {
+                    return true;
                 }
-
-            } else {
-                auto node_top = m_stack.last();
-
-                if (node_top == nullptr) {
-                    std::cout << "no solutionb" << std::endl;
-                    return;
-                }
-
-                if (!(node_top->local.is<root>() || node_top->local.is<nop>() || node_top->local.is<leaf>() || node_top->local.is<call>() || node_top->local.is<join>())) {
-                    --it;
-                }
-
-                if (node_top->local.is<join>()) {
-                    m_stack.push_call(node_top);
-                }
-                if (node_top->local.is<call>()) {
-                    m_stack.pop_call();
-                }
-
-                m_stack.pop_node();
-
-                m_stack.branch_to_next();
+            } else if (!backtrack_to_previous_node()) {
+                return false;
             }
         }
-
-        std::cout << "solution" << std::endl;
-
-/*
-        int i = 0;
-        int level = 0;
-        for (const auto& [index, node] : node_stack) {
-            std::shared_ptr<concrete_graph_type> current;
-            node->child(index, [&](const std::shared_ptr<concrete_graph_type>& child) {
-                current = child;
-            });
-
-
-            if (node->local.is<join>()) {
-                level -= 4;
-            }
-            level = std::max(0, level);
-                    std::cout << std::string(level, ' ') << node->local.to_string() << " " << std::endl;
-            i++;
-
-            if (node->local.is<call>()) {
-                level += 4;
-            }
-        }
-        */
+        
+        return false;
     }
 
     node_converter m_converter;
@@ -456,14 +468,28 @@ private:
 int main(int argc, char **argv) {
     rule_parser p;
 
-    p.add_rule("integer", "(0-9)(0-9)*");
-    p.add_rule("real", "(0-9)(0-9)*.(0-9)(0-9)*");
-    p.add_rule("number", "[integer]|[real]");
-    p.add_rule("operator", "+|\\-|\\*|/");
+        p.add_rule("number", "(0-9)(0-9)*");
+        p.add_rule("paragraph", "[number](.[number])*");
+        p.add_rule("reference", "\\[§ *[paragraph]\\]");
+        p.add_rule("subname", "(a-z|A-Z)(a-z|A-Z)*");
+        p.add_rule("name", "[subname](_[subname])*");
+        //TODO!
+        //p.add_rule("rule_text", "((!-#)|(%-Z)|(\\\\)|(^-z))(|((!-#)|(%-Z)|(\\\\)|(^-z))*)");
+        p.add_rule("rule_text", "(( -#)|(%-Z)|(\\\\)|(^-z))(( -#)|(%-Z)|(\\\\)|(^-z))*");
+        
+        p.add_rule("optional", "\\[ *[rule] *\\]");
+        p.add_rule("list", "{ ,[rule]}");
+        p.add_rule("or", "\\| [rule]");
+        p.add_rule("rule", "([rule_text]|[optional])|([list]|[or])");
 
-    p.add_top_rule("term", "([number])|(((\\()|())[term] [operator] [term]((\\))|()))");
+        //p.add_rule("or_rule", "[optional]");
+        //p.add_rule("rule", "[or_rule]( *\\| *[or_rule])*");
+        
+        p.add_top_rule("rule_def", "[name] *::= *[rule_text] *[reference]");
 
-    p.parse("(5 + (1 + 2) + 1) * 5");
+    p.parse("absolute_pathname ::= . partial_pathname | df [§ 8.7]");
+
+
     
 
 
