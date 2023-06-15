@@ -464,6 +464,18 @@ private:
 };
 
 
+std::string readin_file(const std::string filename) {
+    auto file = std::ifstream(filename);
+    std::string result;
+    
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            result += line;
+        }
+    }
+    return result;
+}
 
 int main(int argc, char **argv) {
     rule_parser p;
@@ -475,19 +487,42 @@ int main(int argc, char **argv) {
         p.add_rule("name", "[subname](_[subname])*");
         //TODO!
         //p.add_rule("rule_text", "((!-#)|(%-Z)|(\\\\)|(^-z))(|((!-#)|(%-Z)|(\\\\)|(^-z))*)");
-        p.add_rule("rule_text", "(( -#)|(%-Z)|(\\\\)|(^-z))(( -#)|(%-Z)|(\\\\)|(^-z))*");
+        p.add_rule("rule_text", "(( -#)|(%-\\])|(\\\\)|(^-}))(( -#)|(%-\\])|(\\\\)|(^-}))*");
         
         p.add_rule("optional", "\\[ *[rule] *\\]");
         p.add_rule("list", "{ ,[rule]}");
         p.add_rule("or", "\\| [rule]");
-        p.add_rule("rule", "([rule_text]|[optional])|([list]|[or])");
+        //p.add_rule("rule", "([rule_text]|[optional])|([list]|[or])");
 
         //p.add_rule("or_rule", "[optional]");
         //p.add_rule("rule", "[or_rule]( *\\| *[or_rule])*");
         
-        p.add_top_rule("rule_def", "[name] *::= *[rule_text] *[reference]");
+        p.add_rule("rule", "[name] *::= *[rule_text] *[reference]");
+        p.add_top_rule("rule_def", "[rule] *[rule]*");
 
-    p.parse("absolute_pathname ::= . partial_pathname | df [§ 8.7]");
+
+        std::ifstream file("../1076-2019.txt");
+        std::string text;
+
+        int n = 0;
+        
+        if (file.is_open()) {
+            std::string line;
+            while (std::getline(file, line)) {
+                n++;
+
+                if (n > 70) {
+                    //break;
+                }
+                for (const auto c : line) {
+                    if (c != '\n') {
+                        text += c;
+                    }
+                }
+                line += " ";
+            }
+        }    
+    p.parse(text);
 
 
     
