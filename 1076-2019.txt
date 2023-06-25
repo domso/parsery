@@ -1,3 +1,7 @@
+choices ::= choice { | choice }
+[§ 9.3.3.1]
+
+
 absolute_pathname ::= . partial_pathname | asd
 [§ 8.7]
 
@@ -1730,16 +1734,6 @@ variable_declaration ::=
 [ shared ] variable identifier_list : subtype_indication [ generic_map_aspect ]
 [ := conditional_expression ] ;
 [§ 6.4.2.4]
-
-verification_unit_binding_indication ::=
-use vunit verification_unit_listwhile (std::getline(file, line)) {
-//                 for (const auto c : line) {
-//                     if (c != '\n') {
-//                         text += c;
-//                     }
-//                 }
-//             
-[§ 7.3.4]
 
 verification_unit_list ::= verification_unit_name { , verification_unit_name }
 [§ 7.3.4]

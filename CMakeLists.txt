@@ -10,6 +10,6 @@ add_executable(
     src/parser/parser.cpp
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FALGS} -std=c++20 -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FALGS} -std=c++20 -g -O3")
 
 install(TARGETS vhdl_parser RUNTIME DESTINATION bin)

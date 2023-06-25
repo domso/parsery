@@ -12,7 +12,7 @@
 #include "src/parser/type_union.h"
 #include "src/parser/graph_node.h"
 #include <memory>
-
+#include <algorithm>
 
 struct A {
     typedef int type;
@@ -188,7 +188,23 @@ private:
         }
 
         current = start;
+        bool escaped = false;
+        std::string cleaned_text;
         for (auto c : node.text) {
+            if (escaped) {
+                escaped = false;
+                cleaned_text += c;
+            } else {
+                if (c != '\\') {
+                    cleaned_text += c;
+                } else {
+                    escaped = true;
+                }
+            }
+        }
+
+
+        for (auto c : cleaned_text) {
             current->make_edge([&](
                 std::shared_ptr<concrete_graph_type>& target
             ) {
@@ -228,6 +244,11 @@ public:
         std::cout << m_top_rule->to_string() << std::endl;
     }
     void parse(const std::string& text) {
+        std::cout << text << std::endl;
+        for (auto c : text) {
+            std::cout << (int)c << " ";
+        }
+        std::cout << std::endl;
         sequencer(text);
         std::cout << "solution" << std::endl;
         m_stack.print();
@@ -324,11 +345,19 @@ private:
                 return *calls.rbegin();
             }
         }
-        bool contains(const std::string& next, const std::string::const_iterator& m_it, const std::string::const_iterator& m_max_it) {
+        bool closes_cycle(const std::string& next, const std::string::const_iterator& m_it, const std::string::const_iterator& m_max_it) {
+            auto first_found = nodes.rend();
+            auto second_found = nodes.rend();
             for (auto rit = nodes.rbegin(); rit != nodes.rend(); ++rit) {
                 if (auto prev_next = rit->previous_node->local.get<call>()) {
                     if (rit->taken_path == 0 && **prev_next == next && m_it == rit->text_position && m_max_it == rit->max_reached_text_position) {
-                        return true;
+                        if (first_found == nodes.rend()) {
+                            first_found = rit;
+                        } else {
+                            second_found = rit;
+            
+                            return std::equal(std::next(first_found), std::next(second_found), nodes.rbegin(), std::next(first_found));
+                        }
                     }
                 }
 
@@ -351,7 +380,7 @@ private:
                     level -= 4;
                 }
                 level = std::max(0, level);
-                std::cout << std::string(level, ' ') << item.previous_node->local.to_string() << " " << std::endl;
+                std::cout << std::string(level, ' ') << item.taken_path << " " << item.previous_node->local.to_string() << " " << std::endl;
 
                 if (item.previous_node->local.is<call>()) {
                     level += 4;
@@ -367,7 +396,11 @@ private:
     std::string::const_iterator m_max_it;
 
     bool check_current_node(const std::shared_ptr<concrete_graph_type>& current, const std::string& text) {
-        std::cout << current->local.to_string() << std::endl;
+        //std::cout << "--------------------" << std::endl;
+        //std::cout << current->local.to_string() << std::endl;
+        //std::cout << "current: " << (int)*m_it << std::endl;
+        //m_stack.print();
+
 
         if (current->local.is<root>() || current->local.is<nop>() || current->local.is<join>()) {
             m_stack.push_node({0, current, m_it, m_max_it});
@@ -387,7 +420,7 @@ private:
                 m_stack.pop_call();
             }
         } else if (auto next = current->local.get<call>()) {
-            bool found = m_stack.contains(**next, m_it, m_max_it);
+            bool found = m_stack.closes_cycle(**next, m_it, m_max_it);
 
             if (found) {
                 m_stack.branch_to_next();
@@ -403,7 +436,6 @@ private:
             ++m_it;
             m_stack.push_node({0, current, m_it, m_max_it});
         } else {
-            std::cout << "branch_to_next" << std::endl;
             m_stack.branch_to_next();
         }
 
@@ -438,7 +470,9 @@ private:
     bool sequencer(const std::string text) {
         m_stack.init(text, m_top_rule);
 
-        m_it = text.begin();
+        auto blub = new std::string(text);
+
+        m_it = blub->begin();
         m_max_it = m_it;
 
         while (true) {
@@ -446,7 +480,7 @@ private:
             auto current = m_stack.current();
 
             if (current != nullptr) {
-                if (check_current_node(current, text)) {
+                if (check_current_node(current, *blub)) {
                     return true;
                 }
             } else if (!backtrack_to_previous_node()) {
@@ -487,18 +521,18 @@ int main(int argc, char **argv) {
         p.add_rule("name", "[subname](_[subname])*");
         //TODO!
         //p.add_rule("rule_text", "((!-#)|(%-Z)|(\\\\)|(^-z))(|((!-#)|(%-Z)|(\\\\)|(^-z))*)");
-        p.add_rule("rule_text", "(( -#)|(%-\\])|(\\\\)|(^-}))(( -#)|(%-\\])|(\\\\)|(^-}))*");
+        p.add_rule("rule_text", "((!-#)|(%-Z)|(\\\\)|(^-z))((!-#)|(%-Z)|(\\\\)|(^-z))*");
+        //p.add_rule("rule_text", "((\\\\)|a)b*");
         
-        p.add_rule("optional", "\\[ *[rule] *\\]");
-        p.add_rule("list", "{ ,[rule]}");
-        p.add_rule("or", "\\| [rule]");
-        //p.add_rule("rule", "([rule_text]|[optional])|([list]|[or])");
+        p.add_rule("optional", "\\[ *[rule]( [rule])* *\\]");
+        p.add_rule("list", "{ *((,|\\|)|) *[rule]( [rule])* *}");
+        p.add_rule("or", "[rule] *\\| *[rule]");
+        p.add_rule("rule", "(([rule_text]|[list])|([or]|[optional])) *");
 
-        //p.add_rule("or_rule", "[optional]");
-        //p.add_rule("rule", "[or_rule]( *\\| *[or_rule])*");
-        
-        p.add_rule("rule", "[name] *::= *[rule_text] *[reference]");
-        p.add_top_rule("rule_def", "[rule] *[rule]*");
+        p.add_rule("rule_assign", "[rule][rule]*[reference]");
+        p.add_rule("rule_def", "[name] *::= *[rule_assign] *");
+        p.add_top_rule("top", "[rule_def][rule_def]* *");
+
 
 
         std::ifstream file("../1076-2019.txt");
@@ -511,21 +545,19 @@ int main(int argc, char **argv) {
             while (std::getline(file, line)) {
                 n++;
 
-                if (n > 70) {
-                    //break;
+                if (n > 240) {
+                    break;
                 }
+
                 for (const auto c : line) {
                     if (c != '\n') {
                         text += c;
                     }
                 }
-                line += " ";
+                text += " ";
             }
         }    
     p.parse(text);
-
-
-    
 
 
     return 0;

@@ -1,312 +1,294 @@
 #include "node_generator.h"
 #include <iostream>
 
+template<typename T>
+void iterate_over_escaped_string(const std::string& text, const size_t start, const size_t end, T call) {
+    bool escaped = false;
+    for (size_t i = start; i < end; i++) {
+        if (escaped) {
+            escaped = false;
+        } else {
+            if (!call(i)) {
+                return;
+            }
+            escaped = (text.at(i) == '\\');
+        }
+    }
+}
+
 parser::node parser::node_generator::generate(const std::string& text) const
 {    
-    auto extended_text = extend_or(extend_star(extend_range(extend_label(text, 0), 0), 0), 0);
+    auto with_label = extend_label(text, 0);
+    auto with_range = extend_range(with_label, 0);
+    auto with_star = extend_star(with_range, 0);
+    auto with_or = extend_or(with_star, 0);
+    auto extended_text = with_or;
+
+    std::cout
+    << "\n" << with_label
+    << "\n" << with_range
+    << "\n" << with_star
+    << "\n" << with_or
+    << "\n" << extended_text << std::endl;
 
     node result(extended_text);
-    
+
+    result.print();
+
     split_node(result);
+    result.print();
     reduce_node(result);
+    result.print();
     link_node(result);
-    clean_node(result);    
+    result.print();
     
     return result;
 }
 
 std::string parser::node_generator::extend_star(const std::string& text, const int num) const
 {
-    bool escaped = false;
+    std::string result = text;
     int found = 0;
     int brackets = 0;
     int src_brackets = 0;
 
-    for (size_t i = 0; i < text.length(); i++) {
-        if (escaped) {
-            escaped = false;
-        } else {
-            if (text.at(i) == '(') {
-                src_brackets++;
-            }
-            if (text.at(i) == ')') {
-                src_brackets--;
-            }
-
-            if (text.at(i) == '*') {
-                if (found == num) {
-                    escaped = false;
-                    int max = 0;
-                    for (size_t j = 0; j < i; j++) {
-                        if (escaped) {
-                            escaped = false;
-                        } else {
-                            if (brackets == src_brackets) {
-                                max = j;
-                            }
-                            if (text.at(j) == '(') {
-                                brackets++;
-                            }
-                            if (text.at(j) == ')') {
-                                brackets--;
-                            }
-                        }
-
-                        escaped = (text.at(j) == '\\');
-                    }
-
-                    if (i < text.length() - 1) {
-                        return extend_star(text.substr(0, max) + "((" + text.substr(max, i - max) + ")*)" + text.substr(i + 1), num + 1);
-                    } else {
-                        return extend_star(text.substr(0, max) + "((" + text.substr(max, i - max) + ")*)", num + 1);
-                    }
-                } else {
-                    found++;
-                }
-            }
-
-            escaped = (text.at(i) == '\\');
+    iterate_over_escaped_string(text, 0, text.length(), [&](const size_t i) {
+        if (text.at(i) == '(') {
+            src_brackets++;
         }
-    }
+        if (text.at(i) == ')') {
+            src_brackets--;
+        }
 
-    return text;
+        if (text.at(i) == '*') {
+            if (found == num) {
+                int max = 0;
+                iterate_over_escaped_string(text, 0, i, [&](const size_t j) {
+                    if (brackets == src_brackets) {
+                        max = j;
+                    }
+                    if (text.at(j) == '(') {
+                        brackets++;
+                    }
+                    if (text.at(j) == ')') {
+                        brackets--;
+                    }
+                    return true;
+                });
+
+                if (i < text.length() - 1) {
+                    result = extend_star(text.substr(0, max) + "((" + text.substr(max, i - max) + ")*)" + text.substr(i + 1), num + 1);
+                    return false;
+                } else {
+                    result = extend_star(text.substr(0, max) + "((" + text.substr(max, i - max) + ")*)", num + 1);
+                    return false;
+                }
+            } else {
+                found++;
+            }
+        }
+
+        return true;
+    });
+
+    return result;
 }
 
 std::string parser::node_generator::extend_or(const std::string& text, const int num) const
 {
-    bool escaped = false;
+    std::string result = text;
     int found = 0;
     int brackets = 0;
     int src_brackets = 0;
     size_t start;
     size_t end;
 
-    for (size_t i = 0; i < text.length(); i++) {
-        if (escaped) {
-            escaped = false;
-        } else {
-            if (text.at(i) == '(') {
-                src_brackets++;
-            }
-            if (text.at(i) == ')') {
-                src_brackets--;
-            }
-
-            if (text.at(i) == '|') {
-                if (found == num) {
-
-                    start = 0;
-
-                    escaped = false;
-                    start = 0;
-                    brackets = 0;
-
-                    for (size_t j = 0; j < i; j++) {
-                        if (escaped) {
-                            escaped = false;
-                        } else {
-                            if (brackets == src_brackets) {
-                                start = j;
-                            }
-                            if (text.at(j) == '(') {
-                                brackets++;
-                            }
-                            if (text.at(j) == ')') {
-                                brackets--;
-                            }
-                        }
-
-                        escaped = (text.at(j) == '\\');
-                    }
-
-                    brackets = 0;
-
-                    escaped = false;
-                    end = text.length() - 1;
-                    
-                    for (size_t j = i + 1; j < text.length(); j++) {
-                        if (!escaped) {
-                            if (text.at(j) == '(') {
-                                brackets++;
-                            }
-                            
-                            if (text.at(j) == ')') {
-                                brackets--;
-                            }
-                            
-                            if (brackets == -1 || (brackets == 0 && text.at(j) == '|')) {
-                                end = j - 1;
-                                break;
-                            }
-                            
-                            escaped = (text.at(j) == '\\');
-                        } else {
-                            escaped = false;
-                        }
-                    }
-                    if (end < text.length() - 1) {
-                        return extend_or(
-                                    text.substr(0, start) +
-                                    "((" +
-                                    text.substr(start, i - start) +
-                                    ")|(" +
-                                    text.substr(i + 1, end - (i + 1) + 1) +
-                                    "))" +
-                                    text.substr(end + 1)
-                                    , num + 1
-                                );
-                    } else {                        
-                        return extend_or(
-                                    text.substr(0, start) +
-                                    "((" +
-                                    text.substr(start, i - start) +
-                                    ")|(" +
-                                    text.substr(i + 1, end - (i + 1) + 1) +
-                                    "))"
-                                    , num + 1
-                                );
-                    }
-                } else {
-                    found++;
-                }
-            }
-
-            escaped = (text.at(i) == '\\');
+    iterate_over_escaped_string(text, 0, text.length(), [&](const size_t i) {
+        if (text.at(i) == '(') {
+            src_brackets++;
         }
-    }
+        if (text.at(i) == ')') {
+            src_brackets--;
+        }
 
-    return text;
+        if (text.at(i) == '|') {
+            if (found == num) {
+
+                start = 0;
+                brackets = 0;
+
+                iterate_over_escaped_string(text, 0, i, [&](const size_t j) {
+                    if (brackets == src_brackets) {
+                        start = j;
+                    }
+                    if (text.at(j) == '(') {
+                        brackets++;
+                    }
+                    if (text.at(j) == ')') {
+                        brackets--;
+                    }
+                    return true;
+                });
+
+                brackets = 0;
+
+                end = text.length() - 1;
+                
+                iterate_over_escaped_string(text, i + 1, text.length(), [&](const size_t j) {
+                    if (text.at(j) == '(') {
+                        brackets++;
+                    }
+                    
+                    if (text.at(j) == ')') {
+                        brackets--;
+                    }
+                    
+                    if (brackets == -1 || (brackets == 0 && text.at(j) == '|')) {
+                        end = j - 1;
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (end < text.length() - 1) {
+                    result = extend_or(
+                                text.substr(0, start) +
+                                "((" +
+                                text.substr(start, i - start) +
+                                ")|(" +
+                                text.substr(i + 1, end - (i + 1) + 1) +
+                                "))" +
+                                text.substr(end + 1)
+                                , num + 1
+                            );
+                    return false;
+                } else {                        
+                    result = extend_or(
+                                text.substr(0, start) +
+                                "((" +
+                                text.substr(start, i - start) +
+                                ")|(" +
+                                text.substr(i + 1, end - (i + 1) + 1) +
+                                "))"
+                                , num + 1
+                            );
+                    return false;
+                }
+            } else {
+                found++;
+            }
+        }
+        return true;
+    });
+
+    return result;
 }
 
 std::string parser::node_generator::extend_range(const std::string& text, const int num) const
 {
-    bool escaped = false;
+    std::string result = text;
     int found = 0;
     int brackets = 0;
     int src_brackets = 0;
-    size_t start;
 
-    for (size_t i = 0; i < text.length(); i++) {
-        if (escaped) {
-            escaped = false;
-        } else {
-            if (text.at(i) == '(') {
-                src_brackets++;
-            }
-            if (text.at(i) == ')') {
-                src_brackets--;
-            }
-
-            if (text.at(i) == '-') {
-                if (found == num) {
-
-                    start = 0;
-
-                    escaped = false;
-                    start = 0;
-
-                    for (size_t j = 0; j < i; j++) {
-                        if (escaped) {
-                            escaped = false;
-                        } else {
-                            if (brackets == src_brackets) {
-                                start = j;
-                            }
-                            if (text.at(j) == '(') {
-                                brackets++;
-                            }
-                            if (text.at(j) == ')') {
-                                brackets--;
-                            }
-                        }
-
-                        escaped = (text.at(j) == '\\');
-                    }
-
-                    brackets = 0;
-
-                    escaped = false;
-                    for (size_t j = i + 1; j <= text.length(); j++) {
-                        if (!escaped) {
-                            if (text.at(j) == '(') {
-                                brackets++;
-                            }
-                            if (text.at(j) == ')') {
-                                brackets--;
-                            }
-                        }
-                        if (brackets == 0 && (escaped || text.at(j) != '\\')) {
-                            if (j < text.length() - 1) {
-                                return extend_range(
-                                            text.substr(0, start) +
-                                            "((" +
-                                            text.substr(start, i - start) +
-                                            ")-(" +
-                                            text.substr(i + 1, j - (i + 1) + 1) +
-                                            "))" +
-                                            text.substr(j + 1)
-                                            , num + 1
-                                        );
-                            } else {
-                                return extend_range(
-                                            text.substr(0, start) +
-                                            "((" +
-                                            text.substr(start, i - start) +
-                                            ")-(" +
-                                            text.substr(i + 1, j - (i + 1) + 1) +
-                                            "))"
-                                            , num + 1
-                                        );
-                            }
-                        }                                              
-                
-                        if (escaped) {
-                            escaped = (text.at(j) == '\\');
-                        } else {
-                            escaped = false;
-                        }   
-                    }
-                } else {
-                    found++;
-                }
-            }
-
-            escaped = (text.at(i) == '\\');
+    iterate_over_escaped_string(text, 0, text.length(), [&](const size_t i) {
+        if (text.at(i) == '(') {
+            src_brackets++;
         }
-    }
+        if (text.at(i) == ')') {
+            src_brackets--;
+        }
 
-    return text;
+        if (text.at(i) == '-') {
+            if (found == num) {
+
+                size_t start = 0;
+
+                iterate_over_escaped_string(text, 0, i, [&](const size_t j) {
+                    if (brackets == src_brackets) {
+                        start = j;
+                    }
+                    if (text.at(j) == '(') {
+                        brackets++;
+                    }
+                    if (text.at(j) == ')') {
+                        brackets--;
+                    }
+                    return true;
+                });
+
+                brackets = 0;
+                auto end = i;
+
+                if (i + 1 < text.length()) {
+                    if (text.at(i + 1) != '\\') {
+                        end = i + 1;
+                    } else if (i + 2 < text.length()) {
+                        end = i + 2;
+                    }
+                }
+
+                if (end < text.length() - 1) {
+                    result = extend_range(
+                        text.substr(0, start) +
+                        "((" +
+                        text.substr(start, i - start) +
+                        ")-(" +
+                        text.substr(i + 1, end - i) +
+                        "))" +
+                        text.substr(end + 1)
+                        , num + 1
+                    );
+                    return false;
+                } else {
+                    result = extend_range(
+                        text.substr(0, start) +
+                        "((" +
+                        text.substr(start, i - start) +
+                        ")-(" +
+                        text.substr(i + 1, end - i) +
+                        "))"
+                        , num + 1
+                    );
+                    return false;
+                }
+            } else {
+                found++;
+            }
+        }
+
+        return true;
+    });
+
+    return result;
 }
 
 std::string parser::node_generator::extend_label(const std::string& text, const int num) const
 {
-    bool escaped = false;
     int found = 0;
+    std::string result = text;
     
-    for (size_t i = 0; i < text.length(); i++) {
-        if (escaped) {
-            escaped = false;
-        } else {
-            if (text.at(i) == '[') {
-                if (found == num) {
-                    return extend_label(text.substr(0, i) + "(" + text.substr(i), num + 1);
-                } else {
-                    found++;
-                }
+    iterate_over_escaped_string(text, 0, text.length(), [&](const size_t i) {
+        if (text.at(i) == '[') {
+            if (found == num) {
+                result = extend_label(text.substr(0, i) + "(" + text.substr(i), num + 1);
+                return false;
+            } else {
+                found++;
             }
-            if (text.at(i) == ']') {
-                if (found == num) {
-                    return extend_label(text.substr(0, i + 1) + ")" + text.substr(i + 1), num + 1);
-                } else {
-                    found++;
-                }
-            }
-
-            escaped = (text.at(i) == '\\');
         }
-    }
+        if (text.at(i) == ']') {
+            if (found == num) {
+                result = extend_label(text.substr(0, i + 1) + ")" + text.substr(i + 1), num + 1);
+                return false;
+            } else {
+                found++;
+            }
+        }
+        return true;
+    });
 
-    return text;
+    return result;
 }
 
 void parser::node_generator::reduce_node(parser::node& n) const
@@ -334,35 +316,29 @@ void parser::node_generator::split_block_node(parser::node& n) const
 {
     std::vector<std::pair<size_t, size_t>> blocks;
 
-    bool escaped = false;
     int found = false;
     size_t start;
 
-    for (size_t i = 0; i < n.text.length(); i++) {
-        if (escaped) {
-            escaped = false;
+    iterate_over_escaped_string(n.text, 0, n.text.length(), [&](const size_t i) {
+        if (found == 0) {
+            if (n.text.at(i) == '(') {
+                start = i;
+                found = 1;
+            }
         } else {
-            if (found == 0) {
-                if (n.text.at(i) == '(') {
-                    start = i;
-                    found = 1;
-                }
-            } else {
-                if (n.text.at(i) == '(') {
-                    found++;
-                }
-                if (n.text.at(i) == ')') {
-                    found--;
+            if (n.text.at(i) == '(') {
+                found++;
+            }
+            if (n.text.at(i) == ')') {
+                found--;
 
-                    if (found == 0) {
-                        blocks.push_back({start, i});
-                    }
+                if (found == 0) {
+                    blocks.push_back({start, i});
                 }
             }
-
-            escaped = (n.text.at(i) == '\\');
         }
-    }
+        return true;
+    });
 
     if (blocks.size() > 0) {
         size_t current = 0;
@@ -400,31 +376,4 @@ void parser::node_generator::link_node(parser::node& n) const {
         link_node(c);
     }
 }
-
-void parser::node_generator::clean_node(parser::node& n) const {
-    std::string result;
-    
-    bool escaped = false;
-    for (auto c : n.text) {
-        if (escaped) {
-            result += c;
-            escaped = false;
-        } else {
-            if (c == '\\') {
-                escaped = true;
-            } else {
-                result += c;
-            }
-        }
-    }    
-    
-    n.text = result;    
-    
-    for (auto& c : n.children) {
-        clean_node(c);
-    }
-}
-
-
-
 
