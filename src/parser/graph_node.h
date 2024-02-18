@@ -262,6 +262,25 @@ public:
     bool& tag() {
         return m_tag;
     }
+
+    template<typename Tsort>
+    void sort_children(Tsort call) {
+        typedef std::pair<Tedge, std::shared_ptr<graph_node<Tnode, Tedge>>> sort_type;
+
+        std::sort(m_children.begin(), m_children.end(), [&](const sort_type& left, const sort_type& right) {
+            return call(*left.second, *right.second);
+        });
+
+        m_tag = true;
+
+        for (const auto& [edge, node] : m_children) {
+            if (node != nullptr) {
+                if (!node->m_tag) {
+                    node->sort_children(call);
+                }
+            }
+        }
+    }
 private:
     template<typename Tcall>
     void int_for_each_reachable_node(const Tcall& call) {

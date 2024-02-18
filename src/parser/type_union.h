@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <variant>
+#include <optional>
 
 namespace std {
     template<typename Ta, typename Tb>

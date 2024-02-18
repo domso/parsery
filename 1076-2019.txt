@@ -1,8 +1,7 @@
 choices ::= choice { | choice }
 [§ 9.3.3.1]
 
-
-absolute_pathname ::= . partial_pathname | asd
+absolute_pathname ::= . partial_pathname
 [§ 8.7]
 
 abstract_literal ::= decimal_literal | based_literal 

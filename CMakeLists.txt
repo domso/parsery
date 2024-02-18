@@ -7,6 +7,8 @@ add_executable(
     main.cpp
     src/parser/node.cpp
     src/parser/node_generator.cpp
+    src/parser/node_converter.cpp
+    src/parser/parse_stack.cpp
     src/parser/parser.cpp
 )
 
