@@ -25,6 +25,7 @@ parser::node parser::node_generator::generate(const std::string& text) const
     auto extended_text = with_or;
 
     std::cout
+    << text
     << "\n" << with_label
     << "\n" << with_range
     << "\n" << with_star

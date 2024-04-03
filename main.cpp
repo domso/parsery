@@ -52,29 +52,6 @@ private:
 };
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-
-
-
-
-
-
 std::string readin_file(const std::string filename) {
     auto file = std::ifstream(filename);
     std::string result;
@@ -101,17 +78,29 @@ int main(int argc, char **argv) {
     //p.add_rule("named_attribute", "\"[name]\":[attribute]");
     //p.add_top_rule("object", "({})|({[named_attribute](,[named_attribute])*})");
 
-    p.add_rule("text.number.1", "(0-9)");
-    p.add_rule("data.number.1", "(0-9)");
+    //p.add_rule("text.number.1", "(0-9)");
+    //p.add_rule("data.number.1", "(0-9)");
 
-    p.add_rule("asd", "\"asd\":[text.number.1]");
-    p.add_rule("data", "\"data\":\\[[data.number.1]\\]");
+    //p.add_rule("ascii", "(\x0-\x7F)");
+    //p.add_rule("utf8_2", "(\xC2-\xDF)(\x80-\xBF)(\x80-\xBF)");
+    //p.add_rule("utf8_3", "(\xE0-\xEF)(\x80-\xBF)(\x80-\xBF)(\x80-\xBF)");
+    //p.add_rule("utf8_4", "(\xF0-\xF4)(\x80-\xBF)(\x80-\xBF)(\x80-\xBF)(\x80-\xBF)");
 
-    p.add_rule("top_attr", "[asd]|[data]");
+    //p.add_rule("utf8", "((\x0-\x21)|(\x23-\x5B)|(\x5D-\xFF)|((\x0-\xFF)))*");
+    p.add_rule("utf8", "((\x1-\x21)|(\x23-\\\x5B)|(\\\x5D-\xFF)|(\x5C\x5C(\x1-\xFF)))*");
+
+    //p.add_rule("number", "(((1-9)(0-9)*)|0)(|(.(0-9)(0-9)*(|((e|E)(+|\\-)(0-9)(0-9)*))))");
+    p.add_rule("number", "(((1-9)(0-9)*)|0)((.(0-9)(0-9)*(((e|E)(+|\\-|)(0-9)(0-9)*)|))|)");
+
+    //p.add_rule("asd", "\"asd\":[text.number.1]");
+    //p.add_rule("data", "\"data\":\\[[data.number.1]\\]");
+
+    //p.add_rule("top_attr", "[asd]|[data]");
     
-    p.add_top_rule("top", "{\"asd\":[text.number.1],\"data\":\\[[text.number.1]\\]}");
+    //p.add_top_rule("top", "{\"asd\":[text.number.1],\"data\":\\[[text.number.1]\\]}");
+    p.add_top_rule("top", "\"[number]\"");
 
-    p.parse("{\"asd\":5,\"data\":[2]}");
+    p.parse("\"654.4e5\"");
 
 
     return 0;

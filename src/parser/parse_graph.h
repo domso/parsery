@@ -55,7 +55,7 @@ struct string {
 };
 
 struct range {
-    typedef std::pair<char, char> type;
+    typedef std::pair<unsigned char, unsigned char> type;
     static constexpr auto label = "range";
 };
 

@@ -62,7 +62,7 @@ node_converter::node_fragment node_converter::node_to_fragment(const parser::nod
 
     if (node.is_range()) {
         auto range_node = std::make_shared<parse_graph>();
-        range_node->local.cast_to<range>({node.children[0].text[0], node.children[2].text[0]});
+        range_node->local.cast_to<range>(std::make_pair<unsigned char, unsigned char>(escape_char(node.children[0].text), escape_char(node.children[2].text)));
         start->make_edge(range_node);
         range_node->make_edge(end);
 
@@ -154,5 +154,12 @@ node_converter::node_fragment node_converter::node_to_fragment(const parser::nod
     current->make_edge(end);
 
     return {start, end};
+}
+
+unsigned char node_converter::escape_char(const std::string t) const {
+    if (t.length() == 2 && t.at(0) == '\\') {
+        return t.at(1);
+    }
+    return t.at(0);
 }
 }

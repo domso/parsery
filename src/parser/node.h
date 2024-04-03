@@ -15,8 +15,6 @@ public:
     bool is_range() const;
     bool is_branch() const;
     bool is_optional() const;
-    bool is_or() const;
-    bool is_star() const;
     bool is_link() const;
 private:
     void print(const int offset) const;

@@ -32,7 +32,7 @@ void parser::parse(const std::string& text) {
     m_stack.pretty_print(text);
 }
 
-bool parser::accepts(const std::shared_ptr<parse_graph>& node, const char cmp) const {
+bool parser::accepts(const std::shared_ptr<parse_graph>& node, const unsigned char cmp) const {
     if (auto c = node->local.get<character>()) {
         return (**c == cmp);
     }

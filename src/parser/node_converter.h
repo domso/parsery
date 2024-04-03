@@ -15,6 +15,7 @@ private:
 
     void remove_nops(const std::shared_ptr<parse_graph>& root) const;
     node_fragment node_to_fragment(const parser::node& node);
+    unsigned char escape_char(const std::string t) const;
 
     int m_fragment_counter = 0;
 };

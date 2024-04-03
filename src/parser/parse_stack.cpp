@@ -166,6 +166,10 @@ void parse_stack::pretty_print(const std::string& text) const {
             std::cout << std::string(level, ' ') <<  "</" << **scope << ">\n";
         }
     }
+    if (current_word != "") {
+        std::cout << std::string(level, ' ') << "'" << current_word << "'" <<  "\n";
+        current_word = "";
+    }
 }
 bool parse_stack::parse_stack_item::operator==(const parse_stack_item& other) const {
     return 

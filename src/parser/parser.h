@@ -14,7 +14,7 @@ public:
     void add_top_rule(const std::string& name, const std::string& rule);
     void parse(const std::string& text);
 private:
-    bool accepts(const std::shared_ptr<parse_graph>& node, const char cmp) const;
+    bool accepts(const std::shared_ptr<parse_graph>& node, const unsigned char cmp) const;
     bool check_current_node(const std::shared_ptr<parse_graph>& current, const std::string& text);
     bool backtrack_to_previous_node();
     bool sequencer(const std::string text);
