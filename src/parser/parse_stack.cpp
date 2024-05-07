@@ -9,6 +9,8 @@ parse_stack::parse_stack() {
 }
 
 void parse_stack::init(const std::string& text, const std::shared_ptr<parse_graph>& root) {
+    m_nodes.clear();
+    m_calls.clear();
     m_nodes.push_back({0, root, text.begin(), text.begin()});
 }
 
@@ -90,86 +92,6 @@ bool parse_stack::closes_cycle(const std::string& next, const std::string::const
     }
 
     return false;
-}
-void parse_stack::print() const {
-    int level = 0;
-    for (const auto& item : m_nodes) {
-        std::shared_ptr<parse_graph> current;
-        item.previous_node->child(item.taken_path, [&](const std::shared_ptr<parse_graph>& child) {
-            current = child;
-        });
-
-        if (item.previous_node->local.is<join>()) {
-            level -= 4;
-        }
-        level = std::max(0, level);
-        std::cout << std::string(level, ' ') << item.taken_path << " " << item.previous_node->local.to_string() << " " << std::endl;
-
-        if (item.previous_node->local.is<call>()) {
-            level += 4;
-        }
-    }
-}
-void parse_stack::pretty_print(const std::string& text) const {
-    int level = 0;
-    auto it = text.begin();
-    std::string current_word;
-    for (const auto& item : m_nodes) {
-        std::shared_ptr<parse_graph> current;
-        item.previous_node->child(item.taken_path, [&](const std::shared_ptr<parse_graph>& child) {
-            current = child;
-        });
-
-        if (item.previous_node->local.is<root>() || item.previous_node->local.is<leaf>()) {
-            continue;
-        }
-
-        if (auto scope = item.previous_node->local.get<call>()) {
-            if (current_word != "") {
-                std::cout << std::string(level, ' ') << "'" << current_word << "'" <<  "\n";
-                current_word = "";
-            }
-            std::cout << std::string(level, ' ') << "<" << **scope << ">\n";
-            level += 4;
-        }
-        if (item.previous_node->local.is<character>() && it != text.end()) {
-            if (*it != '\n') {
-                current_word += *it;
-            }
-            ++it;
-        }
-        if (item.previous_node->local.is<string>()) {
-            if (const auto& seq = item.previous_node->local.get<string>()) {
-                for (auto t : **seq) {
-                    if (it != text.end()) {
-                        if (*it != '\n') {
-                            current_word += *it;
-                        }
-                        ++it;
-                    }
-                }
-            }
-        }
-        if (item.previous_node->local.is<range>() && it != text.end()) {
-            if (*it != '\n') {
-                current_word += *it;
-            }
-            ++it;
-        }
-        if (auto scope = item.previous_node->local.get<join>()) {
-            if (current_word != "") {
-                std::cout << std::string(level, ' ') << "'" << current_word << "'" <<  "\n";
-                current_word = "";
-            }
-            level -= 4;
-            level = std::max(0, level);
-            std::cout << std::string(level, ' ') <<  "</" << **scope << ">\n";
-        }
-    }
-    if (current_word != "") {
-        std::cout << std::string(level, ' ') << "'" << current_word << "'" <<  "\n";
-        current_word = "";
-    }
 }
 bool parse_stack::parse_stack_item::operator==(const parse_stack_item& other) const {
     return 

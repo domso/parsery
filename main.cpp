@@ -14,6 +14,11 @@
 #include <algorithm>
 
 
+
+
+
+
+
 class white_space_trimmer {
 public:
     static std::string trim(const std::string& text) {
@@ -100,7 +105,13 @@ int main(int argc, char **argv) {
     //p.add_top_rule("top", "{\"asd\":[text.number.1],\"data\":\\[[text.number.1]\\]}");
     p.add_top_rule("top", "\"[number]\"");
 
-    p.parse("\"654.4e5\"");
+    p.parse("\"654.4e5\"", [](const auto& scope) {
+        std::cout << scope << std::endl;
+    }, [](const auto& scope) {
+        std::cout << scope << std::endl;
+    }, [](const auto& scope) {
+        std::cout << scope << std::endl;
+    });
 
 
     return 0;
@@ -155,7 +166,7 @@ int main2(int argc, char **argv) {
         }    
 
     auto formated_text = white_space_trimmer::trim(text);
-    p.parse(formated_text);
+    //p.parse(formated_text);
 
 
     return 0;

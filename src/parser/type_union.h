@@ -37,6 +37,15 @@ consteval auto pack_size() {
 
 template<typename T, typename... Ts>
 struct type_union {
+    template<typename Targ, typename... Targs>
+        requires (pack_size<Targs...>() > 0)
+    bool is() const noexcept {
+        if constexpr (pack_size<Targs...>() == 0) {
+            return is<Targ>();
+        } else {
+            return is<Targ>() || is<Targs...>();
+        }
+    }
     template<typename Targ>
     bool is() const noexcept {
         return m_type == pack_id<Targ, 0, T, Ts...>();

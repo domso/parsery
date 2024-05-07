@@ -23,14 +23,6 @@ void parser::add_top_rule(const std::string& name, const std::string& rule) {
     parse_node.print();
     std::cout << m_top_rule->to_string() << std::endl;
 }
-void parser::parse(const std::string& text) {
-    auto t1 = std::chrono::steady_clock::now();
-    sequencer(text);
-    auto t2 = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count();
-    std::cout << duration << std::endl;
-    m_stack.pretty_print(text);
-}
 
 bool parser::accepts(const std::shared_ptr<parse_graph>& node, const unsigned char cmp) const {
     if (auto c = node->local.get<character>()) {

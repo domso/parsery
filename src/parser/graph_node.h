@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <memory>
 #include <vector>
+#include <algorithm>
 
 #include "type_union.h"
 
