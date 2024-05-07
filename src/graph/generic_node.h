@@ -8,9 +8,10 @@
 
 #include "type_union.h"
 
+namespace parser::graph {
 
 template<typename Tnode, typename Tedge>
-class graph_node {
+class generic_node {
 public:
     auto degree() const {
         return m_children.size();
@@ -26,7 +27,7 @@ public:
         }
     }
 
-    void remove_edge(const std::shared_ptr<graph_node<Tnode, Tedge>>& c) {
+    void remove_edge(const std::shared_ptr<generic_node<Tnode, Tedge>>& c) {
         for (auto it = m_children.begin(); it != m_children.end(); ++it) {
             if (it->second == c) {
                 m_children.erase(it);
@@ -36,7 +37,7 @@ public:
     }
     
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, graph_node<Tnode, Tedge>&, Tedge&, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, generic_node<Tnode, Tedge>&, Tedge&, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -47,7 +48,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, graph_node<Tnode, Tedge>&, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, generic_node<Tnode, Tedge>&, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -58,7 +59,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, graph_node<Tnode, Tedge>&, Tedge&>
+        requires std::regular_invocable<Tcall, generic_node<Tnode, Tedge>&, Tedge&>
     void edge(const size_t n, const Tcall& call) {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -69,7 +70,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, Tedge&, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, Tedge&, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -91,7 +92,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -112,7 +113,7 @@ public:
     }
     
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, graph_node<Tnode, Tedge>&, Tedge&, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, generic_node<Tnode, Tedge>&, Tedge&, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) const {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -123,7 +124,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, graph_node<Tnode, Tedge>&, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, generic_node<Tnode, Tedge>&, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) const {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -134,7 +135,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, graph_node<Tnode, Tedge>&, Tedge&>
+        requires std::regular_invocable<Tcall, generic_node<Tnode, Tedge>&, Tedge&>
     void edge(const size_t n, const Tcall& call) const {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -145,7 +146,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, Tedge&, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, Tedge&, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) const {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -167,7 +168,7 @@ public:
     }
 
     template<typename Tcall>
-        requires std::regular_invocable<Tcall, std::shared_ptr<graph_node<Tnode, Tedge>>&>
+        requires std::regular_invocable<Tcall, std::shared_ptr<generic_node<Tnode, Tedge>>&>
     void edge(const size_t n, const Tcall& call) const {
         if (n < m_children.size()) {
             auto& [edge, ptr] = m_children[n];
@@ -219,22 +220,21 @@ public:
         untag_nested_children();
     }
 
-
     template<typename Tcall>
     void make_edge(const Tcall& call) {
-        m_children.push_back(std::make_pair(Tedge(), std::make_shared<graph_node<Tnode, Tedge>>()));
+        m_children.push_back(std::make_pair(Tedge(), std::make_shared<generic_node<Tnode, Tedge>>()));
         edge(m_children.size() - 1, call);        
     }
 
     template<typename Tcall>
-    void make_edge(const std::shared_ptr<graph_node<Tnode, Tedge>>& dest, const Tcall& call) {
+    void make_edge(const std::shared_ptr<generic_node<Tnode, Tedge>>& dest, const Tcall& call) {
         if (dest != nullptr) {
             m_children.push_back(std::make_pair(Tedge(), dest));
             edge(m_children.size() - 1, call);        
         }
     }
 
-    void make_edge(const std::shared_ptr<graph_node<Tnode, Tedge>>& dest) {
+    void make_edge(const std::shared_ptr<generic_node<Tnode, Tedge>>& dest) {
         if (dest != nullptr) {
             m_children.push_back(std::make_pair(Tedge(), dest));
         }
@@ -260,13 +260,14 @@ public:
             }
         }
     }
+
     bool& tag() {
         return m_tag;
     }
 
     template<typename Tsort>
     void sort_children(Tsort call) {
-        typedef std::pair<Tedge, std::shared_ptr<graph_node<Tnode, Tedge>>> sort_type;
+        typedef std::pair<Tedge, std::shared_ptr<generic_node<Tnode, Tedge>>> sort_type;
 
         std::sort(m_children.begin(), m_children.end(), [&](const sort_type& left, const sort_type& right) {
             return call(*left.second, *right.second);
@@ -325,7 +326,8 @@ private:
         return result;
     }
 
-
-    std::vector<std::pair<Tedge, std::shared_ptr<graph_node<Tnode, Tedge>>>> m_children;
+    std::vector<std::pair<Tedge, std::shared_ptr<generic_node<Tnode, Tedge>>>> m_children;
     bool m_tag = false;
 };
+
+}

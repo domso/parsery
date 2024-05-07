@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "src/parser/parser.h"
+#include "src/parser.h"
 
 #include <optional>
 #include <memory>
@@ -70,7 +70,7 @@ std::string readin_file(const std::string filename) {
     return result;
 }
 
-int main(int argc, char **argv) {
+int main2(int argc, char **argv) {
     parser::parser p;
 
 
@@ -116,8 +116,9 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-int main2(int argc, char **argv) {
+int main(int argc, char **argv) {
     parser::parser p;
+
 
 
         p.add_rule("number", "(0-9)(0-9)*");
@@ -132,11 +133,10 @@ int main2(int argc, char **argv) {
         p.add_rule("optional", "\\[[or_tree]\\]");
         p.add_rule("list", "{((,|\\|)|)[or_tree]}");
 
-        p.add_rule("or_tree", "([or_tree]\\|[or_tree])|[sequence]|[text_sequence]|[optional]|[list]");
+        p.add_rule("or_tree", "[node][node]*(\\|[node][node]*)*");
 
-        p.add_rule("sequence", "([text_sequence]([optional]|[list]|([optional][rule])|([list][rule])))|(([optional]|[list])[rule])");
+        p.add_rule("node", "[text_sequence]|[optional]|[list]");
 
-        p.add_rule("rule", "([text_sequence])|[optional]|[list]|[sequence]");
 
         p.add_rule("rule_def", "[name]::=[or_tree][reference]");
         p.add_top_rule("top", "[rule_def][rule_def]*");
@@ -152,9 +152,9 @@ int main2(int argc, char **argv) {
             while (std::getline(file, line)) {
                 n++;
 
-                if (n > 84) {
-                    break;
-                }
+                //if (n > 865) {
+                //    break;
+                //}
 
                 for (const auto c : line) {
                     if (c != '\n') {
@@ -167,7 +167,16 @@ int main2(int argc, char **argv) {
 
     auto formated_text = white_space_trimmer::trim(text);
     //p.parse(formated_text);
-
+    n = 0;
+    p.parse(formated_text, [&](const auto& scope) {
+        std::cout << std::string(n, ' ') << "<" << scope << ">" << std::endl;
+        n += 1;
+    }, [&](const auto& scope) {
+        n -= 1;
+        std::cout << std::string(n, ' ') << "</" << scope << ">" << std::endl;
+    }, [&](const auto& scope) {
+        std::cout << std::string(n, ' ') << scope << std::endl;
+    });
 
     return 0;
 }

@@ -1,53 +1,24 @@
-#include "node_generator.h"
-#include <iostream>
+#include "syntax_generator.h"
 
-template<typename T>
-void iterate_over_escaped_string(const std::string& text, const size_t start, const size_t end, T call) {
-    bool escaped = false;
-    for (size_t i = start; i < end; i++) {
-        if (escaped) {
-            escaped = false;
-        } else {
-            if (!call(i)) {
-                return;
-            }
-            escaped = (text.at(i) == '\\');
-        }
-    }
-}
+namespace parser::frontend {
 
-parser::node parser::node_generator::generate(const std::string& text) const
-{    
+syntax_element syntax_generator::generate(const std::string& text) const {    
     auto with_label = extend_label(text, 0);
     auto with_range = extend_range(with_label, 0);
     auto with_star = extend_star(with_range, 0);
     auto with_or = extend_or(with_star, 0);
     auto extended_text = with_or;
 
-    std::cout
-    << text
-    << "\n" << with_label
-    << "\n" << with_range
-    << "\n" << with_star
-    << "\n" << with_or
-    << "\n" << extended_text << std::endl;
+    syntax_element result(extended_text);
 
-    node result(extended_text);
-
-    result.print();
-
-    split_node(result);
-    result.print();
-    reduce_node(result);
-    result.print();
-    link_node(result);
-    result.print();
+    split_syntax_element(result);
+    reduce_syntax_element(result);
+    link_syntax_element(result);
     
     return result;
 }
 
-std::string parser::node_generator::extend_star(const std::string& text, const int num) const
-{
+std::string syntax_generator::extend_star(const std::string& text, const int num) const {
     std::string result = text;
     int found = 0;
     int brackets = 0;
@@ -95,8 +66,7 @@ std::string parser::node_generator::extend_star(const std::string& text, const i
     return result;
 }
 
-std::string parser::node_generator::extend_or(const std::string& text, const int num) const
-{
+std::string syntax_generator::extend_or(const std::string& text, const int num) const {
     std::string result = text;
     int found = 0;
     int brackets = 0;
@@ -185,8 +155,7 @@ std::string parser::node_generator::extend_or(const std::string& text, const int
     return result;
 }
 
-std::string parser::node_generator::extend_range(const std::string& text, const int num) const
-{
+std::string syntax_generator::extend_range(const std::string& text, const int num) const {
     std::string result = text;
     int found = 0;
     int brackets = 0;
@@ -264,8 +233,7 @@ std::string parser::node_generator::extend_range(const std::string& text, const 
     return result;
 }
 
-std::string parser::node_generator::extend_label(const std::string& text, const int num) const
-{
+std::string syntax_generator::extend_label(const std::string& text, const int num) const {
     int found = 0;
     std::string result = text;
     
@@ -292,10 +260,9 @@ std::string parser::node_generator::extend_label(const std::string& text, const 
     return result;
 }
 
-void parser::node_generator::reduce_node(parser::node& n) const
-{
+void syntax_generator::reduce_syntax_element(syntax_element& n) const {
     for (auto& c : n.children) {
-        reduce_node(c);
+        reduce_syntax_element(c);
     }
 
     if (n.children.size() == 1) {
@@ -304,17 +271,15 @@ void parser::node_generator::reduce_node(parser::node& n) const
     }
 }
 
-void parser::node_generator::split_node(parser::node& n) const
-{
-    split_block_node(n);
+void syntax_generator::split_syntax_element(syntax_element& n) const {
+    split_block_syntax_element(n);
 
     for (auto& c : n.children) {
-        split_node(c);
+        split_syntax_element(c);
     }
 }
 
-void parser::node_generator::split_block_node(parser::node& n) const
-{
+void syntax_generator::split_block_syntax_element(syntax_element& n) const {
     std::vector<std::pair<size_t, size_t>> blocks;
 
     int found = false;
@@ -363,8 +328,7 @@ void parser::node_generator::split_block_node(parser::node& n) const
     }
 }
 
-void parser::node_generator::link_node(parser::node& n) const {   
-    
+void syntax_generator::link_syntax_element(syntax_element& n) const {   
     if (
         n.text.length() > 3 &&
         *n.text.begin() == '[' &&
@@ -374,7 +338,8 @@ void parser::node_generator::link_node(parser::node& n) const {
     }
     
     for (auto& c : n.children) {
-        link_node(c);
+        link_syntax_element(c);
     }
 }
 
+}

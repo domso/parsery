@@ -3,21 +3,9 @@
 #include <string>
 
 #include "type_union.h"
-#include "graph_node.h"
+#include "generic_node.h"
 
-namespace parser {
-struct A {
-    typedef int type;
-    static constexpr auto label = "A";
-};
-struct B {
-    typedef float type;
-    static constexpr auto label = "B";
-};
-struct C {
-    typedef std::string type;
-    static constexpr auto label = "C";
-};
+namespace parser::graph {
 
 struct root {
     typedef int type;
@@ -59,12 +47,12 @@ struct range {
     static constexpr auto label = "range";
 };
 
-typedef type_union<A, B, C, root, leaf, join, nop, call, character, range, string> concrete_node_type;
-typedef type_union<A, B, C> concrete_edge_type;
+typedef type_union<root, leaf, join, nop, call, character, range, string> concrete_node_type;
+typedef type_union<> concrete_edge_type;
 
-typedef graph_node<
+typedef generic_node<
     concrete_node_type,
     concrete_edge_type
-> parse_graph;
+> node;
 
 }
