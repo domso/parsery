@@ -15,6 +15,10 @@ struct syntax_element {
     bool is_branch() const;
     bool is_optional() const;
     bool is_link() const;
+
+    void print() const;
+private:
+    void print(const int offset) const;
 };
 
 }

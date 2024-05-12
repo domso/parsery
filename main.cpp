@@ -70,7 +70,7 @@ std::string readin_file(const std::string filename) {
     return result;
 }
 
-int main2(int argc, char **argv) {
+int main3(int argc, char **argv) {
     parser::parser p;
 
 
@@ -119,51 +119,49 @@ int main2(int argc, char **argv) {
 int main(int argc, char **argv) {
     parser::parser p;
 
+    p.add_rule("number", "(0-9)(0-9)*");
+    p.add_rule("paragraph", "[number](.[number])*");
+    p.add_rule("reference", "\\[§ *[paragraph]\\]");
+    p.add_rule("subname", "(a-z|A-Z)(a-z|A-Z)*");
+    p.add_rule("name", "[subname](_[subname])*");
+
+    p.add_rule("text", "((!-#)|(%-Z)|(\\\\)|(^-z))((!-#)|(%-Z)|(\\\\)|(^-z))*");
+    p.add_rule("text_sequence", "[text]( [text])*");
+    
+    p.add_rule("optional", "\\[[or_tree]\\]");
+    p.add_rule("list", "{((,|\\|)|)[or_tree]}");
+
+    p.add_rule("or_tree", "[node][node]*(\\|[node][node]*)*");
+
+    p.add_rule("node", "[text_sequence]|[optional]|[list]");
 
 
-        p.add_rule("number", "(0-9)(0-9)*");
-        p.add_rule("paragraph", "[number](.[number])*");
-        p.add_rule("reference", "\\[§ *[paragraph]\\]");
-        p.add_rule("subname", "(a-z|A-Z)(a-z|A-Z)*");
-        p.add_rule("name", "[subname](_[subname])*");
-
-        p.add_rule("text", "((!-#)|(%-Z)|(\\\\)|(^-z))((!-#)|(%-Z)|(\\\\)|(^-z))*");
-        p.add_rule("text_sequence", "[text]( [text])*");
-        
-        p.add_rule("optional", "\\[[or_tree]\\]");
-        p.add_rule("list", "{((,|\\|)|)[or_tree]}");
-
-        p.add_rule("or_tree", "[node][node]*(\\|[node][node]*)*");
-
-        p.add_rule("node", "[text_sequence]|[optional]|[list]");
+    p.add_rule("rule_def", "[name]::=[or_tree][reference]");
+    p.add_top_rule("top", "[rule_def][rule_def]*");
 
 
-        p.add_rule("rule_def", "[name]::=[or_tree][reference]");
-        p.add_top_rule("top", "[rule_def][rule_def]*");
+    std::ifstream file("../1076-2019.txt");
+    std::string text;
 
+    int n = 0;
+    
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            n++;
 
-        std::ifstream file("../1076-2019.txt");
-        std::string text;
+            //if (n > 865) {
+            //    break;
+            //}
 
-        int n = 0;
-        
-        if (file.is_open()) {
-            std::string line;
-            while (std::getline(file, line)) {
-                n++;
-
-                //if (n > 865) {
-                //    break;
-                //}
-
-                for (const auto c : line) {
-                    if (c != '\n') {
-                        text += c;
-                    }
+            for (const auto c : line) {
+                if (c != '\n') {
+                    text += c;
                 }
-                text += " ";
             }
-        }    
+            text += " ";
+        }
+    }    
 
     auto formated_text = white_space_trimmer::trim(text);
     //p.parse(formated_text);

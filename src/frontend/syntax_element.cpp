@@ -1,5 +1,7 @@
 #include "syntax_element.h"
 
+#include <iostream>
+
 namespace parser::frontend {
 
 syntax_element::syntax_element(const std::string& t) : text(t) {
@@ -32,6 +34,31 @@ bool syntax_element::is_optional() const {
 
 bool syntax_element::is_link() const {
     return link.length() > 0;
+}
+
+void syntax_element::print() const {
+    print(0);
+}
+
+void syntax_element::print(const int offset) const {
+    for (int i = 0; i < offset; i++) {
+        std::cout << "    ";
+    }
+
+    if (children.empty()) {
+        std::cout << "'" << text << "---" << link << "'" << std::endl;
+    } else {
+        std::cout << text << "(" << std::endl;
+
+        for (auto& c : children) {
+            c.print(offset + 1);
+        }
+        for (int i = 0; i < offset; i++) {
+            std::cout << "    ";
+        }
+
+        std::cout << ")" << std::endl;
+    }
 }
 
 }

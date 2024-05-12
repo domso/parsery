@@ -56,8 +56,11 @@ bool parser::check_current_node(const std::shared_ptr<graph::node>& current, con
         }
     } else if (auto character_sequence = current->local.get<graph::string>()) {
         auto& cmp = **character_sequence;
-        if (std::equal(m_node_stack.position(), m_node_stack.position() + cmp.length(), cmp.begin(), cmp.end())) {
+        auto distance = std::distance(m_node_stack.position(), text.end());
+        if (distance >= cmp.length() && std::equal(m_node_stack.position(), m_node_stack.position() + cmp.length(), cmp.begin(), cmp.end())) {
             m_node_stack.push_node(0, current, m_node_stack.position() + cmp.length());
+        } else {
+            m_node_stack.branch_to_next();
         }
     } else if (m_node_stack.position() < text.end() && accepts(current, *m_node_stack.position())) {
         m_node_stack.push_node(0, current, m_node_stack.position() + 1);

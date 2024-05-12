@@ -330,7 +330,7 @@ void syntax_generator::split_block_syntax_element(syntax_element& n) const {
 
 void syntax_generator::link_syntax_element(syntax_element& n) const {   
     if (
-        n.text.length() > 3 &&
+        n.text.length() >= 3 &&
         *n.text.begin() == '[' &&
         *n.text.rbegin() == ']'
     ) {
