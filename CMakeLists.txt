@@ -4,8 +4,8 @@ project(vhdl_parser)
 
 include_directories(./src/)
 
-add_executable(
-    vhdl_parser 
+add_library(
+    parser 
     src/frontend/syntax_generator.cpp
     src/frontend/syntax_converter.cpp
     src/frontend/rule_importer.cpp
@@ -13,10 +13,13 @@ add_executable(
     src/backend/call_stack.cpp
     src/backend/node_stack.cpp
     src/parser.cpp
+)
 
+add_executable(
+    test 
     main.cpp
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FALGS} -std=c++20 -g -O3")
 
-install(TARGETS vhdl_parser RUNTIME DESTINATION bin)
+target_link_libraries(test parser)
