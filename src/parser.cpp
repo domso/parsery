@@ -2,7 +2,7 @@
 #include <chrono>
 #include <iostream>
 
-namespace parser {
+namespace parsery {
 void parser::add_rule(const std::string& name, const std::string& rule) {
     m_nested_rules[name] = m_importer.import(name, rule);
 }

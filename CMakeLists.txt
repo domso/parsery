@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(vhdl_parser)
+project(parsery)
 
 include_directories(./src/)
 
 add_library(
-    parser 
+    parsery 
     src/frontend/syntax_generator.cpp
     src/frontend/syntax_converter.cpp
     src/frontend/rule_importer.cpp
@@ -17,9 +17,9 @@ add_library(
 
 add_executable(
     test 
-    main.cpp
+    examples/main.cpp
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FALGS} -std=c++20 -g -O3")
 
-target_link_libraries(test parser)
+target_link_libraries(test parsery)

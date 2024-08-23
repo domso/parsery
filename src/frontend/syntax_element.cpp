@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 syntax_element::syntax_element(const std::string& t) : text(t) {
 

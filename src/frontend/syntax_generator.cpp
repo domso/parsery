@@ -1,6 +1,6 @@
 #include "syntax_generator.h"
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 syntax_element syntax_generator::generate(const std::string& text) const {    
     auto with_label = extend_label(text, 0);

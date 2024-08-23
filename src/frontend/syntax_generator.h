@@ -5,7 +5,7 @@
 
 #include "syntax_element.h"
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 class syntax_generator {
 public:

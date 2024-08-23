@@ -5,7 +5,7 @@
 #include "type_union.h"
 #include "generic_node.h"
 
-namespace parser::graph {
+namespace parsery::graph {
 
 struct root {
     typedef int type;

@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 struct syntax_element {
     syntax_element(const std::string& t);
