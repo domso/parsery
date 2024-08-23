@@ -16,10 +16,10 @@ add_library(
 )
 
 add_executable(
-    test 
+    parser_example 
     examples/main.cpp
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FALGS} -std=c++20 -g -O3")
 
-target_link_libraries(test parsery)
+target_link_libraries(parser_example parsery)
