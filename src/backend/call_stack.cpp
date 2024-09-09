@@ -1,6 +1,6 @@
 #include "call_stack.h"
 
-namespace parser::backend {
+namespace parsery::backend {
 
 call_stack::call_stack() {
     m_calls.reserve(32);

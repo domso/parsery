@@ -8,7 +8,7 @@
 
 #include "type_union.h"
 
-namespace parser::graph {
+namespace parsery::graph {
 
 template<typename Tnode, typename Tedge>
 class generic_node {

@@ -1,6 +1,6 @@
 #include "syntax_converter.h"
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 std::shared_ptr<graph::node> syntax_converter::convert(const syntax_element& element) {
     m_fragment_counter = 0;

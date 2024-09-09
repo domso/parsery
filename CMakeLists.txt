@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(vhdl_parser)
+project(parsery)
 
 include_directories(./src/)
 
-add_executable(
-    vhdl_parser 
+add_library(
+    parsery 
     src/frontend/syntax_generator.cpp
     src/frontend/syntax_converter.cpp
     src/frontend/rule_importer.cpp
@@ -13,10 +13,13 @@ add_executable(
     src/backend/call_stack.cpp
     src/backend/node_stack.cpp
     src/parser.cpp
+)
 
-    main.cpp
+add_executable(
+    parser_example 
+    examples/main.cpp
 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FALGS} -std=c++20 -g -O3")
 
-install(TARGETS vhdl_parser RUNTIME DESTINATION bin)
+target_link_libraries(parser_example parsery)

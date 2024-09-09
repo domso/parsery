@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-namespace parser::backend {
+namespace parsery::backend {
 
 node_stack::node_stack() {
     m_nodes.reserve(32);

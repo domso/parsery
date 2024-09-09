@@ -6,7 +6,7 @@
 
 #include "graph/node.h"
 
-namespace parser::backend {
+namespace parsery::backend {
 
 class call_stack {
 public:

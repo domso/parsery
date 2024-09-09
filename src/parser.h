@@ -8,7 +8,7 @@
 
 #include "frontend/rule_importer.h"
 
-namespace parser {
+namespace parsery {
 class parser {
 public:
     void add_rule(const std::string& name, const std::string& rule);

@@ -6,7 +6,7 @@
 #include "syntax_element.h"
 #include "graph/node.h"
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 class syntax_converter {
 public:

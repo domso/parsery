@@ -7,7 +7,7 @@
 
 #include "graph/node.h"
 
-namespace parser::frontend {
+namespace parsery::frontend {
 
 class rule_importer {
 public:
