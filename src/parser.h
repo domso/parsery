@@ -14,13 +14,13 @@ public:
     void add_rule(const std::string& name, const std::string& rule);
     void add_top_rule(const std::string& name, const std::string& rule);
     template<typename T_open_call, typename T_close_call, typename T_data_call>
-    void parse(const std::string& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) {
+    void parse(const std::string_view& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) {
         sequencer(text);
         scan_result(text, open_call, close_call, data_call);
     }
 private:
     template<typename T_open_call, typename T_close_call, typename T_data_call>
-    void scan_result(const std::string& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) const {
+    void scan_result(const std::string_view& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) const {
         auto it = text.begin();
         auto first = it;
 
@@ -35,7 +35,7 @@ private:
             }
             if (node->local.is<graph::join, graph::call>()) {
                 if (first != it) {
-                    data_call(std::string_view(first.operator->(), it - first));
+                    data_call(std::string_view(first, it));
                     first = it;
                 }
             }
@@ -48,13 +48,13 @@ private:
         });
 
         if (first != it) {
-            data_call(std::string_view(first.operator->(), it - first));
+            data_call(std::string_view(first, it));
         }
     }
     bool accepts(const std::shared_ptr<graph::node>& node, const unsigned char cmp) const;
-    bool check_current_node(const std::shared_ptr<graph::node>& current, const std::string& text);
+    bool check_current_node(const std::shared_ptr<graph::node>& current, const std::string_view& text);
     bool backtrack_to_previous_node();
-    bool sequencer(const std::string text);
+    bool sequencer(const std::string_view& text);
 
     frontend::rule_importer m_importer;
 

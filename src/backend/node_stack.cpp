@@ -8,7 +8,7 @@ node_stack::node_stack() {
     m_nodes.reserve(32);
 }
 
-void node_stack::init(const std::string& text, const std::shared_ptr<graph::node>& root) {
+void node_stack::init(const std::string_view& text, const std::shared_ptr<graph::node>& root) {
     m_nodes.clear();
     m_nodes.push_back({0, root, text.begin()});
     m_max_reached_text_position = text.begin();
@@ -44,7 +44,7 @@ std::shared_ptr<graph::node> node_stack::previous() const {
     return current;
 }
 
-const std::string::const_iterator& node_stack::position() const {
+const std::string_view::const_iterator& node_stack::position() const {
     assert(!m_nodes.empty());
     return m_nodes.rbegin()->text_position;    
 }
@@ -59,7 +59,7 @@ void node_stack::branch_to_next() {
 void node_stack::push_node(
     const size_t taken_path, 
     const std::shared_ptr<graph::node>& previous_node, 
-    const std::string::const_iterator& text_position
+    const std::string_view::const_iterator& text_position
 ) {
     m_max_reached_text_position = std::max(m_max_reached_text_position, text_position);
     m_nodes.push_back({taken_path, previous_node, text_position, m_max_reached_text_position});
@@ -69,8 +69,8 @@ void node_stack::pop_node() {
     m_nodes.pop_back();
 }
 bool node_stack::closes_cycle(
-    const std::string& next,
-    const std::string::const_iterator& text_position
+    const std::string_view& next,
+    const std::string_view::const_iterator& text_position
 ) const {
     auto first_found = m_nodes.rend();
     auto second_found = m_nodes.rend();

@@ -23,7 +23,7 @@ bool parser::accepts(const std::shared_ptr<graph::node>& node, const unsigned ch
     return false;
 }
 
-bool parser::check_current_node(const std::shared_ptr<graph::node>& current, const std::string& text) {
+bool parser::check_current_node(const std::shared_ptr<graph::node>& current, const std::string_view& text) {
     if (current->local.is<graph::root>() || current->local.is<graph::nop>() || current->local.is<graph::join>()) {
         m_node_stack.push_node(0, current, m_node_stack.position());
     } else if (current->local.is<graph::leaf>()) {
@@ -91,7 +91,7 @@ bool parser::backtrack_to_previous_node() {
     return true;
 }
 
-bool parser::sequencer(const std::string text) {
+bool parser::sequencer(const std::string_view& text) {
     m_node_stack.init(text, m_top_rule);
     m_call_stack.init();
 
