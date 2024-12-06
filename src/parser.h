@@ -14,10 +14,12 @@ public:
     void add_rule(const std::string& name, const std::string& rule);
     void add_top_rule(const std::string& name, const std::string& rule);
     template<typename T_open_call, typename T_close_call, typename T_data_call>
-    void parse(const std::string_view& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) {
-        sequencer(text);
+    bool parse(const std::string_view& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) {
+        auto result = sequencer(text);
         scan_result(text, open_call, close_call, data_call);
+        return result;
     }
+    ~parser();
 private:
     template<typename T_open_call, typename T_close_call, typename T_data_call>
     void scan_result(const std::string_view& text, const T_open_call& open_call, const T_close_call& close_call, const T_data_call& data_call) const {

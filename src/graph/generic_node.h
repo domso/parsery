@@ -13,8 +13,30 @@ namespace parsery::graph {
 template<typename Tnode, typename Tedge>
 class generic_node {
 public:
+    void release() {
+        std::vector<std::shared_ptr<generic_node<Tnode, Tedge>>> nodes;
+        for_each_reachable_node([&](auto& n) {
+            nodes.push_back(n);
+        });
+
+        for (auto& node : nodes) {
+            node->m_children.clear();
+        }
+    }
+
     auto degree() const {
         return m_children.size();
+    }
+
+    std::optional<size_t> index_of_child(const std::shared_ptr<generic_node<Tnode, Tedge>>& c) {
+        int index = 0;
+        for (auto it = m_children.begin(); it != m_children.end(); ++it) {
+            if (it->second == c) {
+                return index;
+            }
+            index++;
+        }
+        return std::nullopt;
     }
 
     template<typename Tcall>
@@ -240,8 +262,13 @@ public:
         }
     }
 
+    std::string to_string_without_children() {
+        std::string result = "[" + local.to_string() + ", " + std::to_string(reinterpret_cast<size_t>(this))  + ", " + std::to_string(degree()) + "]\n";
+
+        return result;
+    }
     std::string to_string() {
-        std::string result = "[" + local.to_string() + "]\n";
+        std::string result = "[" + local.to_string() + ", " + std::to_string(reinterpret_cast<size_t>(this))  + "]\n";
         result += int_to_string(0);
         untag_nested_children();
 
@@ -316,7 +343,7 @@ private:
         m_tag = true;
         for (const auto& [edge, node] : m_children) {
             if (node != nullptr) {
-                result += std::string(level, ' ') + " --[" + edge.to_string() + "]--> " + "[" + node->local.to_string() + "]\n";
+                result += std::string(level, ' ') + " --[" + edge.to_string() + "]--> " + "[" + node->local.to_string() + ", " + std::to_string(reinterpret_cast<size_t>(node.get()))  + "]\n";
                 if (!node->m_tag) {
                     result += node->int_to_string(level + 4);
                 }

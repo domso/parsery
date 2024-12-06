@@ -1,15 +1,30 @@
 #include "parser.h"
 #include <chrono>
 #include <iostream>
+#include <cassert>
 
 namespace parsery {
 void parser::add_rule(const std::string& name, const std::string& rule) {
-    m_nested_rules[name] = m_importer.import(name, rule);
+    std::cout << name << ": " << rule << std::endl;
+    auto node = m_importer.import(name, rule);
+    std::cout << node->to_string() << std::endl;
+    m_nested_rules[name] = node;
 }
 void parser::add_top_rule(const std::string& name, const std::string& rule) {
+    std::cout << name << ": " << rule << std::endl;
     auto node = m_importer.import(name, rule);
+    std::cout << node->to_string() << std::endl;
     m_nested_rules[name] = node;
     m_top_rule = node;
+}
+
+parser::~parser() {
+    for (auto& [n, rule] : m_nested_rules) {
+        rule->release();
+    }
+    if (m_top_rule) {
+        m_top_rule->release();
+    }
 }
 
 bool parser::accepts(const std::shared_ptr<graph::node>& node, const unsigned char cmp) const {
@@ -42,14 +57,18 @@ bool parser::check_current_node(const std::shared_ptr<graph::node>& current, con
             m_call_stack.pop_call();
         }
     } else if (auto next = current->local.get<graph::call>()) {
-        bool found = m_node_stack.closes_cycle(**next, m_node_stack.position());
+        std::shared_ptr<graph::node> join_node;
+        current->child(0, [&](const std::shared_ptr<graph::node>& child) {
+            join_node = child;
+        });
+        assert(join_node);
+
+        bool found = m_call_stack.closes_cycle(join_node) && m_node_stack.closes_cycle(**next, m_node_stack.position());
 
         if (found) {
             m_node_stack.branch_to_next();
         } else {
-            current->child(0, [&](const std::shared_ptr<graph::node>& child) {
-                m_call_stack.push_call(child);
-            });
+            m_call_stack.push_call(join_node);
 
             m_node_stack.push_node(0, current, m_node_stack.position());
             m_node_stack.push_node(0, m_nested_rules[**next], m_node_stack.position());
