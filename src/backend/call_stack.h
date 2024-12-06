@@ -13,6 +13,7 @@ public:
     call_stack();
 
     void init();
+    void reset();
 
     bool closes_cycle(const std::shared_ptr<graph::node>& next) const;
 

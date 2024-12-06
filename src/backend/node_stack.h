@@ -14,6 +14,7 @@ public:
     node_stack();
 
     void init(const std::string_view& text, const std::shared_ptr<graph::node>& root);
+    void reset();
 
     std::shared_ptr<graph::node> head() const;
     std::shared_ptr<graph::node> previous() const;

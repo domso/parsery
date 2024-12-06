@@ -19,6 +19,7 @@ public:
         scan_result(text, open_call, close_call, data_call);
         return result;
     }
+    void reset();
     ~parser();
 private:
     template<typename T_open_call, typename T_close_call, typename T_data_call>

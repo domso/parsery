@@ -15,6 +15,12 @@ void call_stack::init() {
     m_pop_count = 0;
 }
 
+void call_stack::reset() {
+    m_calls.clear();
+    m_calls.shrink_to_fit();
+    m_pop_count = 0;
+}
+
 bool call_stack::closes_cycle(const std::shared_ptr<graph::node>& next) const {
     auto first_found = m_calls.rend();
     auto second_found = m_calls.rend();

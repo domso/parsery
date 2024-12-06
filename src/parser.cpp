@@ -18,6 +18,11 @@ void parser::add_top_rule(const std::string& name, const std::string& rule) {
     m_top_rule = node;
 }
 
+void parser::reset() {
+    m_node_stack.reset();
+    m_call_stack.reset();
+}
+
 parser::~parser() {
     for (auto& [n, rule] : m_nested_rules) {
         rule->release();

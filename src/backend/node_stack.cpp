@@ -15,6 +15,11 @@ void node_stack::init(const std::string_view& text, const std::shared_ptr<graph:
     m_text_position = text.begin();
 }
 
+void node_stack::reset() {
+    m_nodes.clear();
+    m_nodes.shrink_to_fit();
+}
+
 std::shared_ptr<graph::node> node_stack::head() const {
     std::shared_ptr<graph::node> current;
 
